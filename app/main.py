@@ -1,4 +1,8 @@
+from pathlib import Path
+
 from fastapi import Depends, FastAPI, HTTPException, Response, status
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -7,16 +11,30 @@ from app import models, schemas
 from app.database import Base, engine, get_db
 
 
+# Create the database tables.
 Base.metadata.create_all(bind=engine)
+
+
+# Locate the frontend files.
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
 
 
 app = FastAPI(
     title="Protective Intelligence Risk Tracker",
     description=(
-        "A portfolio application for documenting protective intelligence "
-        "cases, indicators, assessments, and mitigation actions."
+        "A case-management API for tracking protective intelligence cases, "
+        "indicators, assessments, and mitigation actions."
     ),
     version="0.1.0",
+)
+
+
+# Make the CSS and JavaScript files available.
+app.mount(
+    "/static",
+    StaticFiles(directory=STATIC_DIR),
+    name="static",
 )
 
 
@@ -27,6 +45,11 @@ def read_root():
         "status": "operational",
         "version": "0.1.0",
     }
+
+
+@app.get("/dashboard", include_in_schema=False)
+def dashboard():
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/health")
@@ -43,28 +66,31 @@ def create_case(
     case_data: schemas.CaseCreate,
     database: Session = Depends(get_db),
 ):
-    new_case = models.Case(**case_data.model_dump())
+    case = models.Case(**case_data.model_dump())
 
-    database.add(new_case)
+    database.add(case)
 
     try:
         database.commit()
-        database.refresh(new_case)
+        database.refresh(case)
     except IntegrityError:
         database.rollback()
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A case with this case number already exists.",
         )
 
-    return new_case
+    return case
 
 
 @app.get(
     "/cases",
     response_model=list[schemas.CaseResponse],
 )
-def list_cases(database: Session = Depends(get_db)):
+def list_cases(
+    database: Session = Depends(get_db),
+):
     statement = select(models.Case).order_by(models.Case.id)
 
     return database.scalars(statement).all()
@@ -106,7 +132,7 @@ def update_case(
             detail="Case not found.",
         )
 
-    update_data = case_data.model_dump(exclude_unset=True)
+    changes = case_data.model_dump(exclude_unset=True)
 
     required_fields = {
         "case_number",
@@ -118,22 +144,14 @@ def update_case(
         "opened_date",
     }
 
-    invalid_fields = [
-        field_name
-        for field_name in required_fields
-        if field_name in update_data and update_data[field_name] is None
-    ]
+    for field_name in required_fields:
+        if field_name in changes and changes[field_name] is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"{field_name} cannot be null.",
+            )
 
-    if invalid_fields:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail=(
-                "These fields cannot be null: "
-                + ", ".join(sorted(invalid_fields))
-            ),
-        )
-
-    for field_name, value in update_data.items():
+    for field_name, value in changes.items():
         setattr(case, field_name, value)
 
     try:
@@ -141,6 +159,7 @@ def update_case(
         database.refresh(case)
     except IntegrityError:
         database.rollback()
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A case with this case number already exists.",

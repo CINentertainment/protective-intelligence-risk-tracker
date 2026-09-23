@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+    <title>Protective Intelligence Risk Tracker</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <div>
+            <p class="eyebrow">CIN Entertainment</p>
+            <h1>Protective Intelligence Risk Tracker</h1>
+            <p class="subtitle">
+                Case management, risk prioritization, and protective
+                intelligence monitoring
+            </p>
+        </div>
+
+        <div class="system-status">
+            <span class="status-indicator"></span>
+            System Operational
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <section class="statistics" aria-label="Case statistics">
+            <article class="stat-card">
+                <span>Total Cases</span>
+                <strong id="total-cases">0</strong>
+            </article>
+
+            <article class="stat-card">
+                <span>Open Cases</span>
+                <strong id="open-cases">0</strong>
+            </article>
+
+            <article class="stat-card warning">
+                <span>Elevated or Higher</span>
+                <strong id="elevated-cases">0</strong>
+            </article>
+
+            <article class="stat-card danger">
+                <span>Critical Risk</span>
+                <strong id="critical-cases">0</strong>
+            </article>
+        </section>
+
+        <section class="workspace">
+            <article class="panel case-form-panel">
+                <div class="panel-heading">
+                    <div>
+                        <p class="eyebrow">Case Intake</p>
+                        <h2 id="form-heading">Create New Case</h2>
+                    </div>
+                </div>
+
+                <form id="case-form">
+                    <input id="case-id" type="hidden">
+
+                    <label for="case-number">Case Number</label>
+                    <input
+                        id="case-number"
+                        name="case_number"
+                        type="text"
+                        placeholder="PI-2026-002"
+                        required
+                    >
+
+                    <label for="title">Case Title</label>
+                    <input
+                        id="title"
+                        name="title"
+                        type="text"
+                        placeholder="Brief descriptive title"
+                        required
+                    >
+
+                    <label for="summary">Summary</label>
+                    <textarea
+                        id="summary"
+                        name="summary"
+                        rows="5"
+                        placeholder="Describe the reported activity and initial assessment"
+                        required
+                    ></textarea>
+
+                    <div class="form-grid">
+                        <div>
+                            <label for="status">Status</label>
+                            <select id="status" name="status">
+                                <option>Open</option>
+                                <option>Monitoring</option>
+                                <option>Mitigated</option>
+                                <option>Closed</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="priority">Priority</label>
+                            <select id="priority" name="priority">
+                                <option>Routine</option>
+                                <option>Elevated</option>
+                                <option>High</option>
+                                <option>Critical</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="risk-level">Risk Level</label>
+                            <select id="risk-level" name="risk_level">
+                                <option>Undetermined</option>
+                                <option>Low</option>
+                                <option>Moderate</option>
+                                <option>High</option>
+                                <option>Critical</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="opened-date">Opened Date</label>
+                            <input
+                                id="opened-date"
+                                name="opened_date"
+                                type="date"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <label for="next-review-date">Next Review Date</label>
+                    <input
+                        id="next-review-date"
+                        name="next_review_date"
+                        type="date"
+                    >
+
+                    <div class="form-actions">
+                        <button class="primary-button" type="submit">
+                            Save Case
+                        </button>
+
+                        <button
+                            class="secondary-button hidden"
+                            id="cancel-edit"
+                            type="button"
+                        >
+                            Cancel Edit
+                        </button>
+                    </div>
+
+                    <p id="form-message" role="status"></p>
+                </form>
+            </article>
+
+            <article class="panel case-list-panel">
+                <div class="panel-heading">
+                    <div>
+                        <p class="eyebrow">Operational Picture</p>
+                        <h2>Active Case Register</h2>
+                    </div>
+
+                    <button
+                        class="secondary-button"
+                        id="refresh-cases"
+                        type="button"
+                    >
+                        Refresh
+                    </button>
+                </div>
+
+                <div class="filters">
+                    <input
+                        id="search-cases"
+                        type="search"
+                        placeholder="Search case number, title, or summary"
+                    >
+
+                    <select id="status-filter">
+                        <option value="">All statuses</option>
+                        <option>Open</option>
+                        <option>Monitoring</option>
+                        <option>Mitigated</option>
+                        <option>Closed</option>
+                    </select>
+                </div>
+
+                <div id="case-list" class="case-list">
+                    <p class="empty-state">Loading cases...</p>
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <footer>
+        Protective Intelligence Risk Tracker · Version 0.1.0
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
