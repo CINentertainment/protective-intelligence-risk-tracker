@@ -132,3 +132,64 @@ def test_reject_duplicate_case_number():
     assert response.json() == {
         "detail": "A case with this case number already exists."
     }
+
+
+def test_update_case():
+    create_response = client.post("/cases", json=sample_case())
+    case_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/cases/{case_id}",
+        json={
+            "status": "Monitoring",
+            "priority": "High",
+            "risk_level": "High",
+            "summary": (
+                "Additional reporting corroborated the surveillance activity. "
+                "The case was elevated for continued monitoring."
+            ),
+        },
+    )
+
+    assert response.status_code == 200
+
+    response_data = response.json()
+
+    assert response_data["id"] == case_id
+    assert response_data["case_number"] == "PI-2026-001"
+    assert response_data["status"] == "Monitoring"
+    assert response_data["priority"] == "High"
+    assert response_data["risk_level"] == "High"
+    assert "Additional reporting" in response_data["summary"]
+
+
+def test_update_missing_case():
+    response = client.patch(
+        "/cases/999",
+        json={"status": "Closed"},
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Case not found."}
+
+
+def test_delete_case():
+    create_response = client.post("/cases", json=sample_case())
+    case_id = create_response.json()["id"]
+
+    delete_response = client.delete(f"/cases/{case_id}")
+
+    assert delete_response.status_code == 204
+    assert delete_response.content == b""
+
+    get_response = client.get(f"/cases/{case_id}")
+
+    assert get_response.status_code == 404
+    assert get_response.json() == {"detail": "Case not found."}
+
+
+def test_delete_missing_case():
+    response = client.delete("/cases/999")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Case not found."}

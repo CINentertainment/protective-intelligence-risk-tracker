@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -87,3 +87,85 @@ def get_case(
         )
 
     return case
+
+
+@app.patch(
+    "/cases/{case_id}",
+    response_model=schemas.CaseResponse,
+)
+def update_case(
+    case_id: int,
+    case_data: schemas.CaseUpdate,
+    database: Session = Depends(get_db),
+):
+    case = database.get(models.Case, case_id)
+
+    if case is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found.",
+        )
+
+    update_data = case_data.model_dump(exclude_unset=True)
+
+    required_fields = {
+        "case_number",
+        "title",
+        "summary",
+        "status",
+        "priority",
+        "risk_level",
+        "opened_date",
+    }
+
+    invalid_fields = [
+        field_name
+        for field_name in required_fields
+        if field_name in update_data and update_data[field_name] is None
+    ]
+
+    if invalid_fields:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                "These fields cannot be null: "
+                + ", ".join(sorted(invalid_fields))
+            ),
+        )
+
+    for field_name, value in update_data.items():
+        setattr(case, field_name, value)
+
+    try:
+        database.commit()
+        database.refresh(case)
+    except IntegrityError:
+        database.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A case with this case number already exists.",
+        )
+
+    return case
+
+
+@app.delete(
+    "/cases/{case_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_case(
+    case_id: int,
+    database: Session = Depends(get_db),
+):
+    case = database.get(models.Case, case_id)
+
+    if case is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found.",
+        )
+
+    database.delete(case)
+    database.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

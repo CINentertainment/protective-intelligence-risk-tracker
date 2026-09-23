@@ -24,6 +24,25 @@ class CaseCreate(CaseBase):
     pass
 
 
+class CaseUpdate(BaseModel):
+    case_number: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=50,
+    )
+    title: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+    )
+    summary: str | None = Field(default=None, min_length=1)
+    status: CaseStatus | None = None
+    priority: CasePriority | None = None
+    risk_level: RiskLevel | None = None
+    opened_date: date | None = None
+    next_review_date: date | None = None
+
+
 class CaseResponse(CaseBase):
     model_config = ConfigDict(from_attributes=True)
 
