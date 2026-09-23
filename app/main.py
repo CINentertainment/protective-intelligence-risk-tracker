@@ -1,5 +1,10 @@
 from fastapi import FastAPI
 
+from app import models
+from app.database import Base, engine
+
+# Create all database tables defined in models.py.
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Protective Intelligence Risk Tracker",
