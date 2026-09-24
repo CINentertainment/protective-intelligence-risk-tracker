@@ -6,199 +6,522 @@
         name="viewport"
         content="width=device-width, initial-scale=1.0"
     >
+
     <title>Protective Intelligence Risk Tracker</title>
-    <link rel="stylesheet" href="/static/styles.css">
+
+    <link
+        rel="stylesheet"
+        href="/static/styles.css"
+    >
 </head>
 
 <body>
     <header class="site-header">
-        <div>
-            <p class="eyebrow">CIN Entertainment</p>
-            <h1>Protective Intelligence Risk Tracker</h1>
-            <p class="subtitle">
-                Case management, risk prioritization, and protective
-                intelligence monitoring
-            </p>
-        </div>
+        <div class="header-content">
+            <div>
+                <p class="eyebrow">CIN ENTERTAINMENT</p>
 
-        <div class="system-status">
-            <span class="status-indicator"></span>
-            System Operational
+                <h1>Protective Intelligence Risk Tracker</h1>
+
+                <p class="subtitle">
+                    Case management, risk prioritization, and protective
+                    intelligence monitoring
+                </p>
+            </div>
+
+            <div class="system-status">
+                <span class="status-light"></span>
+                System Operational
+            </div>
         </div>
     </header>
 
     <main class="dashboard">
-        <section class="statistics" aria-label="Case statistics">
-            <article class="stat-card">
-                <span>Total Cases</span>
-                <strong id="total-cases">0</strong>
+        <section class="statistics-grid">
+            <article class="stat-card cyan">
+                <p>Total Cases</p>
+                <strong id="totalCases">0</strong>
             </article>
 
-            <article class="stat-card">
-                <span>Open Cases</span>
-                <strong id="open-cases">0</strong>
+            <article class="stat-card blue">
+                <p>Open Cases</p>
+                <strong id="openCases">0</strong>
             </article>
 
-            <article class="stat-card warning">
-                <span>Elevated or Higher</span>
-                <strong id="elevated-cases">0</strong>
+            <article class="stat-card amber">
+                <p>Elevated or Higher</p>
+                <strong id="elevatedCases">0</strong>
             </article>
 
-            <article class="stat-card danger">
-                <span>Critical Risk</span>
-                <strong id="critical-cases">0</strong>
+            <article class="stat-card red">
+                <p>Critical Risk</p>
+                <strong id="criticalCases">0</strong>
             </article>
         </section>
 
-        <section class="workspace">
+        <section class="primary-workspace">
             <article class="panel case-form-panel">
                 <div class="panel-heading">
                     <div>
-                        <p class="eyebrow">Case Intake</p>
-                        <h2 id="form-heading">Create New Case</h2>
+                        <p class="eyebrow">CASE INTAKE</p>
+                        <h2 id="caseFormTitle">Create New Case</h2>
                     </div>
                 </div>
 
-                <form id="case-form">
-                    <input id="case-id" type="hidden">
-
-                    <label for="case-number">Case Number</label>
+                <form id="caseForm">
                     <input
-                        id="case-number"
-                        name="case_number"
+                        id="editingCaseId"
+                        type="hidden"
+                    >
+
+                    <label for="caseNumber">Case Number</label>
+                    <input
+                        id="caseNumber"
                         type="text"
+                        maxlength="50"
                         placeholder="PI-2026-002"
                         required
                     >
 
-                    <label for="title">Case Title</label>
+                    <label for="caseTitle">Case Title</label>
                     <input
-                        id="title"
-                        name="title"
+                        id="caseTitle"
                         type="text"
+                        maxlength="200"
                         placeholder="Brief descriptive title"
                         required
                     >
 
-                    <label for="summary">Summary</label>
+                    <label for="caseSummary">Summary</label>
                     <textarea
-                        id="summary"
-                        name="summary"
+                        id="caseSummary"
                         rows="5"
                         placeholder="Describe the reported activity and initial assessment"
                         required
                     ></textarea>
 
-                    <div class="form-grid">
+                    <div class="form-grid two-column">
                         <div>
-                            <label for="status">Status</label>
-                            <select id="status" name="status">
-                                <option>Open</option>
-                                <option>Monitoring</option>
-                                <option>Mitigated</option>
-                                <option>Closed</option>
+                            <label for="caseStatus">Status</label>
+                            <select id="caseStatus">
+                                <option value="Open">Open</option>
+                                <option value="Monitoring">
+                                    Monitoring
+                                </option>
+                                <option value="Mitigated">
+                                    Mitigated
+                                </option>
+                                <option value="Closed">Closed</option>
                             </select>
                         </div>
 
                         <div>
-                            <label for="priority">Priority</label>
-                            <select id="priority" name="priority">
-                                <option>Routine</option>
-                                <option>Elevated</option>
-                                <option>High</option>
-                                <option>Critical</option>
+                            <label for="casePriority">Priority</label>
+                            <select id="casePriority">
+                                <option value="Routine">Routine</option>
+                                <option value="Elevated">
+                                    Elevated
+                                </option>
+                                <option value="High">High</option>
+                                <option value="Critical">
+                                    Critical
+                                </option>
                             </select>
                         </div>
 
                         <div>
-                            <label for="risk-level">Risk Level</label>
-                            <select id="risk-level" name="risk_level">
-                                <option>Undetermined</option>
-                                <option>Low</option>
-                                <option>Moderate</option>
-                                <option>High</option>
-                                <option>Critical</option>
+                            <label for="caseRiskLevel">Risk Level</label>
+                            <select id="caseRiskLevel">
+                                <option value="Undetermined">
+                                    Undetermined
+                                </option>
+                                <option value="Low">Low</option>
+                                <option value="Moderate">
+                                    Moderate
+                                </option>
+                                <option value="High">High</option>
+                                <option value="Critical">
+                                    Critical
+                                </option>
                             </select>
                         </div>
 
                         <div>
-                            <label for="opened-date">Opened Date</label>
+                            <label for="openedDate">Opened Date</label>
                             <input
-                                id="opened-date"
-                                name="opened_date"
+                                id="openedDate"
                                 type="date"
                                 required
                             >
                         </div>
                     </div>
 
-                    <label for="next-review-date">Next Review Date</label>
+                    <label for="nextReviewDate">
+                        Next Review Date
+                    </label>
+
                     <input
-                        id="next-review-date"
-                        name="next_review_date"
+                        id="nextReviewDate"
                         type="date"
                     >
 
-                    <div class="form-actions">
-                        <button class="primary-button" type="submit">
+                    <div class="button-row">
+                        <button
+                            class="primary-button"
+                            type="submit"
+                        >
                             Save Case
                         </button>
 
                         <button
+                            id="cancelEditButton"
                             class="secondary-button hidden"
-                            id="cancel-edit"
                             type="button"
                         >
                             Cancel Edit
                         </button>
                     </div>
-
-                    <p id="form-message" role="status"></p>
                 </form>
             </article>
 
-            <article class="panel case-list-panel">
+            <article class="panel case-register-panel">
                 <div class="panel-heading">
                     <div>
-                        <p class="eyebrow">Operational Picture</p>
+                        <p class="eyebrow">OPERATIONAL PICTURE</p>
                         <h2>Active Case Register</h2>
                     </div>
 
                     <button
+                        id="refreshButton"
                         class="secondary-button"
-                        id="refresh-cases"
                         type="button"
                     >
                         Refresh
                     </button>
                 </div>
 
-                <div class="filters">
+                <div class="filter-row">
                     <input
-                        id="search-cases"
+                        id="searchInput"
                         type="search"
                         placeholder="Search case number, title, or summary"
                     >
 
-                    <select id="status-filter">
+                    <select id="statusFilter">
                         <option value="">All statuses</option>
-                        <option>Open</option>
-                        <option>Monitoring</option>
-                        <option>Mitigated</option>
-                        <option>Closed</option>
+                        <option value="Open">Open</option>
+                        <option value="Monitoring">
+                            Monitoring
+                        </option>
+                        <option value="Mitigated">
+                            Mitigated
+                        </option>
+                        <option value="Closed">Closed</option>
                     </select>
                 </div>
 
-                <div id="case-list" class="case-list">
+                <div
+                    id="caseList"
+                    class="case-list"
+                >
                     <p class="empty-state">Loading cases...</p>
                 </div>
             </article>
         </section>
+
+        <section
+            id="analysisWorkspace"
+            class="analysis-workspace hidden"
+        >
+            <article class="panel selected-case-panel">
+                <div class="panel-heading">
+                    <div>
+                        <p class="eyebrow">SELECTED CASE</p>
+                        <h2 id="selectedCaseTitle">
+                            Case Analysis Workspace
+                        </h2>
+                    </div>
+
+                    <button
+                        id="closeWorkspaceButton"
+                        class="secondary-button"
+                        type="button"
+                    >
+                        Close
+                    </button>
+                </div>
+
+                <div id="selectedCaseSummary"></div>
+            </article>
+
+            <div class="analysis-grid">
+                <article class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <p class="eyebrow">OBSERVABLES</p>
+                            <h2>Indicators</h2>
+                        </div>
+                    </div>
+
+                    <form id="indicatorForm">
+                        <label for="indicatorType">
+                            Indicator Type
+                        </label>
+
+                        <select id="indicatorType">
+                            <option value="Surveillance">
+                                Surveillance
+                            </option>
+                            <option value="Threatening Communication">
+                                Threatening Communication
+                            </option>
+                            <option value="Access Attempt">
+                                Access Attempt
+                            </option>
+                            <option value="Online Activity">
+                                Online Activity
+                            </option>
+                            <option value="Travel Pattern">
+                                Travel Pattern
+                            </option>
+                            <option value="Behavioral Change">
+                                Behavioral Change
+                            </option>
+                            <option value="Other">Other</option>
+                        </select>
+
+                        <label for="indicatorDescription">
+                            Description
+                        </label>
+
+                        <textarea
+                            id="indicatorDescription"
+                            rows="4"
+                            placeholder="Describe the observed behavior, event, or condition"
+                            required
+                        ></textarea>
+
+                        <div class="form-grid two-column">
+                            <div>
+                                <label for="indicatorSource">
+                                    Source
+                                </label>
+
+                                <input
+                                    id="indicatorSource"
+                                    type="text"
+                                    maxlength="200"
+                                    placeholder="Patrol report, witness, OSINT"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="indicatorCredibility">
+                                    Credibility
+                                </label>
+
+                                <select id="indicatorCredibility">
+                                    <option value="Unassessed">
+                                        Unassessed
+                                    </option>
+                                    <option value="Low">Low</option>
+                                    <option value="Moderate">
+                                        Moderate
+                                    </option>
+                                    <option value="High">High</option>
+                                    <option value="Confirmed">
+                                        Confirmed
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <label for="indicatorObservedDate">
+                            Observed Date
+                        </label>
+
+                        <input
+                            id="indicatorObservedDate"
+                            type="date"
+                            required
+                        >
+
+                        <button
+                            class="primary-button"
+                            type="submit"
+                        >
+                            Add Indicator
+                        </button>
+                    </form>
+
+                    <div
+                        id="indicatorList"
+                        class="analysis-list"
+                    >
+                        <p class="empty-state">
+                            No indicators recorded.
+                        </p>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <p class="eyebrow">ANALYTIC JUDGMENT</p>
+                            <h2>Risk Assessments</h2>
+                        </div>
+                    </div>
+
+                    <form id="assessmentForm">
+                        <div class="form-grid two-column">
+                            <div>
+                                <label for="threatLevel">
+                                    Threat
+                                </label>
+
+                                <select id="threatLevel">
+                                    <option value="Low">Low</option>
+                                    <option value="Moderate">
+                                        Moderate
+                                    </option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">
+                                        Critical
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="vulnerabilityLevel">
+                                    Vulnerability
+                                </label>
+
+                                <select id="vulnerabilityLevel">
+                                    <option value="Low">Low</option>
+                                    <option value="Moderate">
+                                        Moderate
+                                    </option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">
+                                        Critical
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="impactLevel">
+                                    Impact
+                                </label>
+
+                                <select id="impactLevel">
+                                    <option value="Low">Low</option>
+                                    <option value="Moderate">
+                                        Moderate
+                                    </option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">
+                                        Critical
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="overallRisk">
+                                    Overall Risk
+                                </label>
+
+                                <select id="overallRisk">
+                                    <option value="Low">Low</option>
+                                    <option value="Moderate">
+                                        Moderate
+                                    </option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">
+                                        Critical
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <label for="assessmentRationale">
+                            Analytic Rationale
+                        </label>
+
+                        <textarea
+                            id="assessmentRationale"
+                            rows="4"
+                            placeholder="Explain the evidence and reasoning supporting the assessment"
+                            required
+                        ></textarea>
+
+                        <label for="recommendedAction">
+                            Recommended Action
+                        </label>
+
+                        <textarea
+                            id="recommendedAction"
+                            rows="3"
+                            placeholder="Describe recommended monitoring or mitigation measures"
+                        ></textarea>
+
+                        <div class="form-grid two-column">
+                            <div>
+                                <label for="assessedBy">
+                                    Assessed By
+                                </label>
+
+                                <input
+                                    id="assessedBy"
+                                    type="text"
+                                    maxlength="150"
+                                    placeholder="Analyst name or position"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="assessmentDate">
+                                    Assessment Date
+                                </label>
+
+                                <input
+                                    id="assessmentDate"
+                                    type="date"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <button
+                            class="primary-button"
+                            type="submit"
+                        >
+                            Record Assessment
+                        </button>
+                    </form>
+
+                    <div
+                        id="assessmentList"
+                        class="analysis-list"
+                    >
+                        <p class="empty-state">
+                            No assessments recorded.
+                        </p>
+                    </div>
+                </article>
+            </div>
+        </section>
     </main>
 
     <footer>
-        Protective Intelligence Risk Tracker · Version 0.1.0
+        Protective Intelligence Risk Tracker · Version 0.2.0
     </footer>
+
+    <div
+        id="toast"
+        class="toast hidden"
+        role="status"
+        aria-live="polite"
+    ></div>
 
     <script src="/static/app.js"></script>
 </body>

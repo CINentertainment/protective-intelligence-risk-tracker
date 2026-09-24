@@ -1,25 +1,75 @@
-const caseForm = document.querySelector("#case-form");
-const caseList = document.querySelector("#case-list");
-const caseIdInput = document.querySelector("#case-id");
-const caseNumberInput = document.querySelector("#case-number");
-const titleInput = document.querySelector("#title");
-const summaryInput = document.querySelector("#summary");
-const statusInput = document.querySelector("#status");
-const priorityInput = document.querySelector("#priority");
-const riskLevelInput = document.querySelector("#risk-level");
-const openedDateInput = document.querySelector("#opened-date");
-const nextReviewDateInput = document.querySelector("#next-review-date");
-const formHeading = document.querySelector("#form-heading");
-const formMessage = document.querySelector("#form-message");
-const cancelEditButton = document.querySelector("#cancel-edit");
-const refreshButton = document.querySelector("#refresh-cases");
-const searchInput = document.querySelector("#search-cases");
-const statusFilter = document.querySelector("#status-filter");
-
-let cases = [];
+const state = {
+    cases: [],
+    selectedCaseId: null,
+    selectedCase: null,
+};
 
 
-function getToday() {
+const elements = {
+    totalCases: document.getElementById("totalCases"),
+    openCases: document.getElementById("openCases"),
+    elevatedCases: document.getElementById("elevatedCases"),
+    criticalCases: document.getElementById("criticalCases"),
+
+    caseForm: document.getElementById("caseForm"),
+    caseFormTitle: document.getElementById("caseFormTitle"),
+    editingCaseId: document.getElementById("editingCaseId"),
+    caseNumber: document.getElementById("caseNumber"),
+    caseTitle: document.getElementById("caseTitle"),
+    caseSummary: document.getElementById("caseSummary"),
+    caseStatus: document.getElementById("caseStatus"),
+    casePriority: document.getElementById("casePriority"),
+    caseRiskLevel: document.getElementById("caseRiskLevel"),
+    openedDate: document.getElementById("openedDate"),
+    nextReviewDate: document.getElementById("nextReviewDate"),
+    cancelEditButton: document.getElementById("cancelEditButton"),
+
+    refreshButton: document.getElementById("refreshButton"),
+    searchInput: document.getElementById("searchInput"),
+    statusFilter: document.getElementById("statusFilter"),
+    caseList: document.getElementById("caseList"),
+
+    analysisWorkspace: document.getElementById("analysisWorkspace"),
+    closeWorkspaceButton: document.getElementById("closeWorkspaceButton"),
+    selectedCaseTitle: document.getElementById("selectedCaseTitle"),
+    selectedCaseSummary: document.getElementById("selectedCaseSummary"),
+
+    indicatorForm: document.getElementById("indicatorForm"),
+    indicatorType: document.getElementById("indicatorType"),
+    indicatorDescription: document.getElementById(
+        "indicatorDescription"
+    ),
+    indicatorSource: document.getElementById("indicatorSource"),
+    indicatorCredibility: document.getElementById(
+        "indicatorCredibility"
+    ),
+    indicatorObservedDate: document.getElementById(
+        "indicatorObservedDate"
+    ),
+    indicatorList: document.getElementById("indicatorList"),
+
+    assessmentForm: document.getElementById("assessmentForm"),
+    threatLevel: document.getElementById("threatLevel"),
+    vulnerabilityLevel: document.getElementById(
+        "vulnerabilityLevel"
+    ),
+    impactLevel: document.getElementById("impactLevel"),
+    overallRisk: document.getElementById("overallRisk"),
+    assessmentRationale: document.getElementById(
+        "assessmentRationale"
+    ),
+    recommendedAction: document.getElementById(
+        "recommendedAction"
+    ),
+    assessedBy: document.getElementById("assessedBy"),
+    assessmentDate: document.getElementById("assessmentDate"),
+    assessmentList: document.getElementById("assessmentList"),
+
+    toast: document.getElementById("toast"),
+};
+
+
+function today() {
     return new Date().toISOString().split("T")[0];
 }
 
@@ -34,70 +84,142 @@ function escapeHtml(value) {
 }
 
 
-function createClassName(value) {
-    return String(value ?? "")
-        .trim()
-        .toLowerCase()
-        .replaceAll(" ", "-");
-}
-
-
 function formatDate(value) {
     if (!value) {
         return "Not scheduled";
     }
 
-    const [year, month, day] = value.split("-");
+    const parts = value.split("-");
 
-    return `${month}/${day}/${year}`;
+    if (parts.length !== 3) {
+        return value;
+    }
+
+    return `${parts[1]}/${parts[2]}/${parts[0]}`;
 }
 
 
-function showMessage(message, isError = false) {
-    formMessage.textContent = message;
-    formMessage.classList.toggle("error", isError);
+function levelClass(level) {
+    const normalized = String(level ?? "").toLowerCase();
+
+    if (normalized === "critical" || normalized === "high") {
+        return "red";
+    }
+
+    if (
+        normalized === "elevated" ||
+        normalized === "moderate"
+    ) {
+        return "amber";
+    }
+
+    if (
+        normalized === "low" ||
+        normalized === "confirmed" ||
+        normalized === "closed" ||
+        normalized === "mitigated"
+    ) {
+        return "green";
+    }
+
+    return "";
 }
 
 
-function resetForm() {
-    caseForm.reset();
-    caseIdInput.value = "";
-    formHeading.textContent = "Create New Case";
-    cancelEditButton.classList.add("hidden");
+async function apiRequest(url, options = {}) {
+    const requestOptions = {
+        ...options,
+        headers: {
+            ...(options.body
+                ? {"Content-Type": "application/json"}
+                : {}),
+            ...(options.headers || {}),
+        },
+    };
 
-    statusInput.value = "Open";
-    priorityInput.value = "Routine";
-    riskLevelInput.value = "Undetermined";
-    openedDateInput.value = getToday();
+    const response = await fetch(url, requestOptions);
 
-    showMessage("");
+    if (response.status === 204) {
+        return null;
+    }
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+        let message = "The request could not be completed.";
+
+        if (data?.detail) {
+            if (Array.isArray(data.detail)) {
+                message = data.detail
+                    .map((item) => item.msg)
+                    .join("; ");
+            } else {
+                message = data.detail;
+            }
+        }
+
+        throw new Error(message);
+    }
+
+    return data;
+}
+
+
+let toastTimer;
+
+
+function showToast(message, isError = false) {
+    clearTimeout(toastTimer);
+
+    elements.toast.textContent = message;
+    elements.toast.classList.remove("hidden", "error");
+
+    if (isError) {
+        elements.toast.classList.add("error");
+    }
+
+    toastTimer = setTimeout(() => {
+        elements.toast.classList.add("hidden");
+    }, 3500);
 }
 
 
 function updateStatistics() {
-    const elevatedPriorities = ["Elevated", "High", "Critical"];
+    const activeStatuses = new Set(["Open", "Monitoring"]);
+    const elevatedPriorities = new Set([
+        "Elevated",
+        "High",
+        "Critical",
+    ]);
 
-    document.querySelector("#total-cases").textContent = cases.length;
+    elements.totalCases.textContent = state.cases.length;
 
-    document.querySelector("#open-cases").textContent = cases.filter(
-        (caseItem) => caseItem.status === "Open"
+    elements.openCases.textContent = state.cases.filter(
+        (caseItem) => activeStatuses.has(caseItem.status)
     ).length;
 
-    document.querySelector("#elevated-cases").textContent = cases.filter(
-        (caseItem) => elevatedPriorities.includes(caseItem.priority)
+    elements.elevatedCases.textContent = state.cases.filter(
+        (caseItem) => elevatedPriorities.has(caseItem.priority)
     ).length;
 
-    document.querySelector("#critical-cases").textContent = cases.filter(
+    elements.criticalCases.textContent = state.cases.filter(
         (caseItem) => caseItem.risk_level === "Critical"
     ).length;
 }
 
 
-function getFilteredCases() {
-    const searchTerm = searchInput.value.trim().toLowerCase();
-    const selectedStatus = statusFilter.value;
+function filteredCases() {
+    const searchTerm = elements.searchInput.value
+        .trim()
+        .toLowerCase();
 
-    return cases.filter((caseItem) => {
+    const selectedStatus = elements.statusFilter.value;
+
+    return state.cases.filter((caseItem) => {
+        const matchesStatus =
+            !selectedStatus ||
+            caseItem.status === selectedStatus;
+
         const searchableText = [
             caseItem.case_number,
             caseItem.title,
@@ -106,34 +228,43 @@ function getFilteredCases() {
             .join(" ")
             .toLowerCase();
 
-        const matchesSearch = searchableText.includes(searchTerm);
-        const matchesStatus =
-            !selectedStatus || caseItem.status === selectedStatus;
+        const matchesSearch =
+            !searchTerm ||
+            searchableText.includes(searchTerm);
 
-        return matchesSearch && matchesStatus;
+        return matchesStatus && matchesSearch;
     });
 }
 
 
 function renderCases() {
-    const filteredCases = getFilteredCases();
+    const cases = filteredCases();
 
-    if (filteredCases.length === 0) {
-        caseList.innerHTML = `
+    if (cases.length === 0) {
+        elements.caseList.innerHTML = `
             <p class="empty-state">
-                No cases match the current search and filter.
+                No cases match the current filters.
             </p>
         `;
+
         return;
     }
 
-    caseList.innerHTML = filteredCases
+    elements.caseList.innerHTML = cases
         .map((caseItem) => {
-            const riskClass = createClassName(caseItem.risk_level);
-            const priorityClass = createClassName(caseItem.priority);
+            const selected =
+                state.selectedCaseId === caseItem.id
+                    ? "selected"
+                    : "";
+
+            const priorityClass =
+                `priority-${caseItem.priority.toLowerCase()}`;
 
             return `
-                <article class="case-card risk-${riskClass}">
+                <article
+                    class="case-card ${priorityClass} ${selected}"
+                    data-case-id="${caseItem.id}"
+                >
                     <div class="case-card-header">
                         <div>
                             <p class="case-number">
@@ -143,28 +274,35 @@ function renderCases() {
                             <h3>${escapeHtml(caseItem.title)}</h3>
                         </div>
 
-                        <div class="badges">
+                        <div class="badge-group">
                             <span class="badge">
                                 ${escapeHtml(caseItem.status)}
                             </span>
 
-                            <span class="badge priority-${priorityClass}">
-                                Priority: ${escapeHtml(caseItem.priority)}
+                            <span class="badge ${levelClass(
+                                caseItem.priority
+                            )}">
+                                Priority:
+                                ${escapeHtml(caseItem.priority)}
                             </span>
 
-                            <span class="badge risk-${riskClass}">
-                                Risk: ${escapeHtml(caseItem.risk_level)}
+                            <span class="badge ${levelClass(
+                                caseItem.risk_level
+                            )}">
+                                Risk:
+                                ${escapeHtml(caseItem.risk_level)}
                             </span>
                         </div>
                     </div>
 
-                    <p class="case-summary">
+                    <p class="case-card-summary">
                         ${escapeHtml(caseItem.summary)}
                     </p>
 
-                    <div class="case-metadata">
+                    <div class="case-meta">
                         <span>
-                            Opened: ${formatDate(caseItem.opened_date)}
+                            Opened:
+                            ${formatDate(caseItem.opened_date)}
                         </span>
 
                         <span>
@@ -172,14 +310,21 @@ function renderCases() {
                             ${formatDate(caseItem.next_review_date)}
                         </span>
 
-                        <span>
-                            Record ID: ${caseItem.id}
-                        </span>
+                        <span>Record ID: ${caseItem.id}</span>
                     </div>
 
                     <div class="case-actions">
                         <button
-                            class="secondary-button"
+                            class="small-button"
+                            type="button"
+                            data-action="analyze"
+                            data-case-id="${caseItem.id}"
+                        >
+                            Analyze
+                        </button>
+
+                        <button
+                            class="small-button"
                             type="button"
                             data-action="edit"
                             data-case-id="${caseItem.id}"
@@ -190,7 +335,7 @@ function renderCases() {
                         <button
                             class="danger-button"
                             type="button"
-                            data-action="delete"
+                            data-action="delete-case"
                             data-case-id="${caseItem.id}"
                         >
                             Delete
@@ -203,94 +348,413 @@ function renderCases() {
 }
 
 
-async function getErrorMessage(response) {
-    try {
-        const responseData = await response.json();
+function renderSelectedCase() {
+    const caseItem = state.selectedCase;
 
-        if (typeof responseData.detail === "string") {
-            return responseData.detail;
-        }
-
-        if (Array.isArray(responseData.detail)) {
-            return responseData.detail
-                .map((error) => error.msg)
-                .join(" ");
-        }
-    } catch {
-        return "The server returned an unexpected response.";
+    if (!caseItem) {
+        elements.analysisWorkspace.classList.add("hidden");
+        return;
     }
 
-    return "The request could not be completed.";
+    elements.selectedCaseTitle.textContent =
+        `${caseItem.case_number}: ${caseItem.title}`;
+
+    elements.selectedCaseSummary.innerHTML = `
+        <div class="selected-case-overview">
+            <div class="badge-group">
+                <span class="badge">
+                    ${escapeHtml(caseItem.status)}
+                </span>
+
+                <span class="badge ${levelClass(
+                    caseItem.priority
+                )}">
+                    Priority: ${escapeHtml(caseItem.priority)}
+                </span>
+
+                <span class="badge ${levelClass(
+                    caseItem.risk_level
+                )}">
+                    Current Risk:
+                    ${escapeHtml(caseItem.risk_level)}
+                </span>
+            </div>
+
+            <p>${escapeHtml(caseItem.summary)}</p>
+
+            <div class="case-meta">
+                <span>
+                    Opened: ${formatDate(caseItem.opened_date)}
+                </span>
+
+                <span>
+                    Next review:
+                    ${formatDate(caseItem.next_review_date)}
+                </span>
+
+                <span>
+                    Indicators: ${caseItem.indicators.length}
+                </span>
+
+                <span>
+                    Assessments: ${caseItem.assessments.length}
+                </span>
+            </div>
+        </div>
+    `;
+
+    renderIndicators(caseItem.indicators);
+    renderAssessments(caseItem.assessments);
+
+    elements.analysisWorkspace.classList.remove("hidden");
+}
+
+
+function renderIndicators(indicators) {
+    if (!indicators.length) {
+        elements.indicatorList.innerHTML = `
+            <p class="empty-state">
+                No indicators recorded.
+            </p>
+        `;
+
+        return;
+    }
+
+    elements.indicatorList.innerHTML = indicators
+        .map((indicator) => `
+            <article class="analysis-item">
+                <div class="analysis-item-header">
+                    <div>
+                        <h3>
+                            ${escapeHtml(indicator.indicator_type)}
+                        </h3>
+
+                        <span class="badge ${levelClass(
+                            indicator.credibility
+                        )}">
+                            ${escapeHtml(indicator.credibility)}
+                        </span>
+                    </div>
+
+                    <button
+                        class="danger-button"
+                        type="button"
+                        data-action="delete-indicator"
+                        data-indicator-id="${indicator.id}"
+                    >
+                        Delete
+                    </button>
+                </div>
+
+                <p>${escapeHtml(indicator.description)}</p>
+
+                <div class="analysis-meta">
+                    <span>
+                        Observed:
+                        ${formatDate(indicator.observed_date)}
+                    </span>
+
+                    <span>
+                        Source:
+                        ${escapeHtml(
+                            indicator.source || "Not recorded"
+                        )}
+                    </span>
+
+                    <span>ID: ${indicator.id}</span>
+                </div>
+            </article>
+        `)
+        .join("");
+}
+
+
+function renderAssessments(assessments) {
+    if (!assessments.length) {
+        elements.assessmentList.innerHTML = `
+            <p class="empty-state">
+                No assessments recorded.
+            </p>
+        `;
+
+        return;
+    }
+
+    elements.assessmentList.innerHTML = assessments
+        .map((assessment) => `
+            <article class="analysis-item">
+                <div class="analysis-item-header">
+                    <div>
+                        <h3>
+                            Risk Assessment
+                            ${formatDate(
+                                assessment.assessment_date
+                            )}
+                        </h3>
+
+                        <span class="badge ${levelClass(
+                            assessment.overall_risk
+                        )}">
+                            Overall:
+                            ${escapeHtml(
+                                assessment.overall_risk
+                            )}
+                        </span>
+                    </div>
+
+                    <button
+                        class="danger-button"
+                        type="button"
+                        data-action="delete-assessment"
+                        data-assessment-id="${assessment.id}"
+                    >
+                        Delete
+                    </button>
+                </div>
+
+                <div class="assessment-levels">
+                    <div class="assessment-level">
+                        Threat
+                        <strong>
+                            ${escapeHtml(
+                                assessment.threat_level
+                            )}
+                        </strong>
+                    </div>
+
+                    <div class="assessment-level">
+                        Vulnerability
+                        <strong>
+                            ${escapeHtml(
+                                assessment.vulnerability_level
+                            )}
+                        </strong>
+                    </div>
+
+                    <div class="assessment-level">
+                        Impact
+                        <strong>
+                            ${escapeHtml(
+                                assessment.impact_level
+                            )}
+                        </strong>
+                    </div>
+
+                    <div class="assessment-level">
+                        Overall Risk
+                        <strong>
+                            ${escapeHtml(
+                                assessment.overall_risk
+                            )}
+                        </strong>
+                    </div>
+                </div>
+
+                <p>
+                    <strong>Rationale:</strong><br>
+                    ${escapeHtml(assessment.rationale)}
+                </p>
+
+                ${
+                    assessment.recommended_action
+                        ? `
+                            <p>
+                                <strong>
+                                    Recommended action:
+                                </strong><br>
+                                ${escapeHtml(
+                                    assessment.recommended_action
+                                )}
+                            </p>
+                        `
+                        : ""
+                }
+
+                <div class="analysis-meta">
+                    <span>
+                        Assessed by:
+                        ${escapeHtml(
+                            assessment.assessed_by ||
+                            "Not recorded"
+                        )}
+                    </span>
+
+                    <span>ID: ${assessment.id}</span>
+                </div>
+            </article>
+        `)
+        .join("");
 }
 
 
 async function loadCases() {
-    caseList.innerHTML = `
-        <p class="empty-state">Loading cases...</p>
-    `;
-
     try {
-        const response = await fetch("/cases");
-
-        if (!response.ok) {
-            throw new Error(await getErrorMessage(response));
-        }
-
-        cases = await response.json();
+        state.cases = await apiRequest("/cases");
 
         updateStatistics();
         renderCases();
+
+        if (state.selectedCaseId !== null) {
+            const selectedStillExists = state.cases.some(
+                (caseItem) =>
+                    caseItem.id === state.selectedCaseId
+            );
+
+            if (selectedStillExists) {
+                await loadSelectedCase(
+                    state.selectedCaseId,
+                    false
+                );
+            } else {
+                closeAnalysisWorkspace();
+            }
+        }
     } catch (error) {
-        caseList.innerHTML = `
-            <p class="empty-state">
-                Unable to load cases: ${escapeHtml(error.message)}
+        elements.caseList.innerHTML = `
+            <p class="empty-state error-state">
+                ${escapeHtml(error.message)}
             </p>
         `;
+
+        showToast(error.message, true);
     }
 }
 
 
-function startEditing(caseId) {
-    const selectedCase = cases.find(
-        (caseItem) => caseItem.id === caseId
+async function loadSelectedCase(
+    caseId,
+    scrollToWorkspace = true
+) {
+    try {
+        state.selectedCaseId = Number(caseId);
+        state.selectedCase = await apiRequest(
+            `/cases/${state.selectedCaseId}`
+        );
+
+        renderCases();
+        renderSelectedCase();
+
+        if (scrollToWorkspace) {
+            elements.analysisWorkspace.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+            });
+        }
+    } catch (error) {
+        showToast(error.message, true);
+    }
+}
+
+
+function closeAnalysisWorkspace() {
+    state.selectedCaseId = null;
+    state.selectedCase = null;
+
+    elements.analysisWorkspace.classList.add("hidden");
+
+    renderCases();
+}
+
+
+function resetCaseForm() {
+    elements.caseForm.reset();
+
+    elements.editingCaseId.value = "";
+    elements.caseFormTitle.textContent = "Create New Case";
+    elements.cancelEditButton.classList.add("hidden");
+
+    elements.caseStatus.value = "Open";
+    elements.casePriority.value = "Routine";
+    elements.caseRiskLevel.value = "Undetermined";
+    elements.openedDate.value = today();
+}
+
+
+function beginCaseEdit(caseId) {
+    const caseItem = state.cases.find(
+        (item) => item.id === Number(caseId)
     );
 
-    if (!selectedCase) {
+    if (!caseItem) {
+        showToast("The selected case could not be found.", true);
         return;
     }
 
-    caseIdInput.value = selectedCase.id;
-    caseNumberInput.value = selectedCase.case_number;
-    titleInput.value = selectedCase.title;
-    summaryInput.value = selectedCase.summary;
-    statusInput.value = selectedCase.status;
-    priorityInput.value = selectedCase.priority;
-    riskLevelInput.value = selectedCase.risk_level;
-    openedDateInput.value = selectedCase.opened_date;
-    nextReviewDateInput.value = selectedCase.next_review_date ?? "";
+    elements.editingCaseId.value = caseItem.id;
+    elements.caseFormTitle.textContent =
+        `Edit ${caseItem.case_number}`;
 
-    formHeading.textContent = `Edit ${selectedCase.case_number}`;
-    cancelEditButton.classList.remove("hidden");
-    showMessage("");
+    elements.caseNumber.value = caseItem.case_number;
+    elements.caseTitle.value = caseItem.title;
+    elements.caseSummary.value = caseItem.summary;
+    elements.caseStatus.value = caseItem.status;
+    elements.casePriority.value = caseItem.priority;
+    elements.caseRiskLevel.value = caseItem.risk_level;
+    elements.openedDate.value = caseItem.opened_date;
+    elements.nextReviewDate.value =
+        caseItem.next_review_date || "";
 
-    caseForm.scrollIntoView({
+    elements.cancelEditButton.classList.remove("hidden");
+
+    elements.caseForm.scrollIntoView({
         behavior: "smooth",
         block: "start",
     });
 }
 
 
+async function saveCase(event) {
+    event.preventDefault();
+
+    const editingCaseId = elements.editingCaseId.value;
+
+    const payload = {
+        case_number: elements.caseNumber.value.trim(),
+        title: elements.caseTitle.value.trim(),
+        summary: elements.caseSummary.value.trim(),
+        status: elements.caseStatus.value,
+        priority: elements.casePriority.value,
+        risk_level: elements.caseRiskLevel.value,
+        opened_date: elements.openedDate.value,
+        next_review_date:
+            elements.nextReviewDate.value || null,
+    };
+
+    try {
+        if (editingCaseId) {
+            await apiRequest(`/cases/${editingCaseId}`, {
+                method: "PATCH",
+                body: JSON.stringify(payload),
+            });
+
+            showToast("Case updated successfully.");
+        } else {
+            await apiRequest("/cases", {
+                method: "POST",
+                body: JSON.stringify(payload),
+            });
+
+            showToast("Case created successfully.");
+        }
+
+        resetCaseForm();
+        await loadCases();
+    } catch (error) {
+        showToast(error.message, true);
+    }
+}
+
+
 async function deleteCase(caseId) {
-    const selectedCase = cases.find(
-        (caseItem) => caseItem.id === caseId
+    const caseItem = state.cases.find(
+        (item) => item.id === Number(caseId)
     );
 
-    if (!selectedCase) {
-        return;
-    }
-
     const confirmed = window.confirm(
-        `Delete case ${selectedCase.case_number}? This cannot be undone.`
+        `Delete ${
+            caseItem?.case_number || "this case"
+        } and all associated indicators and assessments?`
     );
 
     if (!confirmed) {
@@ -298,96 +762,262 @@ async function deleteCase(caseId) {
     }
 
     try {
-        const response = await fetch(`/cases/${caseId}`, {
+        await apiRequest(`/cases/${caseId}`, {
             method: "DELETE",
         });
 
-        if (!response.ok) {
-            throw new Error(await getErrorMessage(response));
+        if (state.selectedCaseId === Number(caseId)) {
+            closeAnalysisWorkspace();
         }
 
-        if (Number(caseIdInput.value) === caseId) {
-            resetForm();
-        }
-
+        resetCaseForm();
         await loadCases();
+
+        showToast("Case deleted.");
     } catch (error) {
-        window.alert(`Unable to delete case: ${error.message}`);
+        showToast(error.message, true);
     }
 }
 
 
-caseForm.addEventListener("submit", async (event) => {
+async function saveIndicator(event) {
     event.preventDefault();
 
-    const caseId = caseIdInput.value;
+    if (state.selectedCaseId === null) {
+        showToast("Select a case first.", true);
+        return;
+    }
 
-    const caseData = {
-        case_number: caseNumberInput.value.trim(),
-        title: titleInput.value.trim(),
-        summary: summaryInput.value.trim(),
-        status: statusInput.value,
-        priority: priorityInput.value,
-        risk_level: riskLevelInput.value,
-        opened_date: openedDateInput.value,
-        next_review_date: nextReviewDateInput.value || null,
+    const payload = {
+        indicator_type: elements.indicatorType.value,
+        description:
+            elements.indicatorDescription.value.trim(),
+        source:
+            elements.indicatorSource.value.trim() || null,
+        credibility: elements.indicatorCredibility.value,
+        observed_date: elements.indicatorObservedDate.value,
     };
 
-    const requestUrl = caseId ? `/cases/${caseId}` : "/cases";
-    const requestMethod = caseId ? "PATCH" : "POST";
+    try {
+        await apiRequest(
+            `/cases/${state.selectedCaseId}/indicators`,
+            {
+                method: "POST",
+                body: JSON.stringify(payload),
+            }
+        );
 
-    showMessage(caseId ? "Updating case..." : "Creating case...");
+        elements.indicatorForm.reset();
+        elements.indicatorCredibility.value = "Unassessed";
+        elements.indicatorObservedDate.value = today();
+
+        await loadCases();
+
+        showToast("Indicator added.");
+    } catch (error) {
+        showToast(error.message, true);
+    }
+}
+
+
+async function deleteIndicator(indicatorId) {
+    if (state.selectedCaseId === null) {
+        return;
+    }
+
+    if (!window.confirm("Delete this indicator?")) {
+        return;
+    }
 
     try {
-        const response = await fetch(requestUrl, {
-            method: requestMethod,
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(caseData),
-        });
-
-        if (!response.ok) {
-            throw new Error(await getErrorMessage(response));
-        }
-
-        resetForm();
-        showMessage(
-            caseId
-                ? "Case updated successfully."
-                : "Case created successfully."
+        await apiRequest(
+            `/cases/${state.selectedCaseId}/indicators/${indicatorId}`,
+            {
+                method: "DELETE",
+            }
         );
 
         await loadCases();
+
+        showToast("Indicator deleted.");
     } catch (error) {
-        showMessage(error.message, true);
+        showToast(error.message, true);
     }
-});
+}
 
 
-caseList.addEventListener("click", (event) => {
+async function saveAssessment(event) {
+    event.preventDefault();
+
+    if (state.selectedCaseId === null) {
+        showToast("Select a case first.", true);
+        return;
+    }
+
+    const payload = {
+        threat_level: elements.threatLevel.value,
+        vulnerability_level:
+            elements.vulnerabilityLevel.value,
+        impact_level: elements.impactLevel.value,
+        overall_risk: elements.overallRisk.value,
+        rationale:
+            elements.assessmentRationale.value.trim(),
+        recommended_action:
+            elements.recommendedAction.value.trim() || null,
+        assessed_by:
+            elements.assessedBy.value.trim() || null,
+        assessment_date: elements.assessmentDate.value,
+    };
+
+    try {
+        await apiRequest(
+            `/cases/${state.selectedCaseId}/assessments`,
+            {
+                method: "POST",
+                body: JSON.stringify(payload),
+            }
+        );
+
+        elements.assessmentForm.reset();
+
+        elements.threatLevel.value = "Low";
+        elements.vulnerabilityLevel.value = "Low";
+        elements.impactLevel.value = "Low";
+        elements.overallRisk.value = "Low";
+        elements.assessmentDate.value = today();
+
+        await loadCases();
+
+        showToast("Risk assessment recorded.");
+    } catch (error) {
+        showToast(error.message, true);
+    }
+}
+
+
+async function deleteAssessment(assessmentId) {
+    if (state.selectedCaseId === null) {
+        return;
+    }
+
+    if (!window.confirm("Delete this risk assessment?")) {
+        return;
+    }
+
+    try {
+        await apiRequest(
+            `/cases/${state.selectedCaseId}/assessments/${assessmentId}`,
+            {
+                method: "DELETE",
+            }
+        );
+
+        await loadCases();
+
+        showToast("Risk assessment deleted.");
+    } catch (error) {
+        showToast(error.message, true);
+    }
+}
+
+
+elements.caseForm.addEventListener("submit", saveCase);
+
+elements.cancelEditButton.addEventListener(
+    "click",
+    resetCaseForm
+);
+
+elements.refreshButton.addEventListener(
+    "click",
+    async () => {
+        await loadCases();
+        showToast("Case register refreshed.");
+    }
+);
+
+elements.searchInput.addEventListener("input", renderCases);
+elements.statusFilter.addEventListener("change", renderCases);
+
+elements.closeWorkspaceButton.addEventListener(
+    "click",
+    closeAnalysisWorkspace
+);
+
+elements.indicatorForm.addEventListener(
+    "submit",
+    saveIndicator
+);
+
+elements.assessmentForm.addEventListener(
+    "submit",
+    saveAssessment
+);
+
+
+elements.caseList.addEventListener("click", async (event) => {
     const button = event.target.closest("button[data-action]");
 
     if (!button) {
         return;
     }
 
+    const action = button.dataset.action;
     const caseId = Number(button.dataset.caseId);
 
-    if (button.dataset.action === "edit") {
-        startEditing(caseId);
+    if (action === "analyze") {
+        await loadSelectedCase(caseId);
     }
 
-    if (button.dataset.action === "delete") {
-        deleteCase(caseId);
+    if (action === "edit") {
+        beginCaseEdit(caseId);
+    }
+
+    if (action === "delete-case") {
+        await deleteCase(caseId);
     }
 });
 
 
-cancelEditButton.addEventListener("click", resetForm);
-refreshButton.addEventListener("click", loadCases);
-searchInput.addEventListener("input", renderCases);
-statusFilter.addEventListener("change", renderCases);
+elements.indicatorList.addEventListener(
+    "click",
+    async (event) => {
+        const button = event.target.closest(
+            'button[data-action="delete-indicator"]'
+        );
 
-openedDateInput.value = getToday();
+        if (!button) {
+            return;
+        }
+
+        await deleteIndicator(
+            Number(button.dataset.indicatorId)
+        );
+    }
+);
+
+
+elements.assessmentList.addEventListener(
+    "click",
+    async (event) => {
+        const button = event.target.closest(
+            'button[data-action="delete-assessment"]'
+        );
+
+        if (!button) {
+            return;
+        }
+
+        await deleteAssessment(
+            Number(button.dataset.assessmentId)
+        );
+    }
+);
+
+
+resetCaseForm();
+
+elements.indicatorObservedDate.value = today();
+elements.assessmentDate.value = today();
+
 loadCases();
