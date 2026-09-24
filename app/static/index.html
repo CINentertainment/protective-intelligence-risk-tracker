@@ -8,11 +8,7 @@
     >
 
     <title>Protective Intelligence Risk Tracker</title>
-
-    <link
-        rel="stylesheet"
-        href="/static/styles.css"
-    >
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 
 <body>
@@ -20,7 +16,6 @@
         <div class="header-content">
             <div>
                 <p class="eyebrow">CIN ENTERTAINMENT</p>
-
                 <h1>Protective Intelligence Risk Tracker</h1>
 
                 <p class="subtitle">
@@ -69,10 +64,7 @@
                 </div>
 
                 <form id="caseForm">
-                    <input
-                        id="editingCaseId"
-                        type="hidden"
-                    >
+                    <input id="editingCaseId" type="hidden">
 
                     <label for="caseNumber">Case Number</label>
                     <input
@@ -130,7 +122,10 @@
                         </div>
 
                         <div>
-                            <label for="caseRiskLevel">Risk Level</label>
+                            <label for="caseRiskLevel">
+                                Risk Level
+                            </label>
+
                             <select id="caseRiskLevel">
                                 <option value="Undetermined">
                                     Undetermined
@@ -147,7 +142,10 @@
                         </div>
 
                         <div>
-                            <label for="openedDate">Opened Date</label>
+                            <label for="openedDate">
+                                Opened Date
+                            </label>
+
                             <input
                                 id="openedDate"
                                 type="date"
@@ -160,10 +158,7 @@
                         Next Review Date
                     </label>
 
-                    <input
-                        id="nextReviewDate"
-                        type="date"
-                    >
+                    <input id="nextReviewDate" type="date">
 
                     <div class="button-row">
                         <button
@@ -220,11 +215,10 @@
                     </select>
                 </div>
 
-                <div
-                    id="caseList"
-                    class="case-list"
-                >
-                    <p class="empty-state">Loading cases...</p>
+                <div id="caseList" class="case-list">
+                    <p class="empty-state">
+                        Loading cases...
+                    </p>
                 </div>
             </article>
         </section>
@@ -237,6 +231,7 @@
                 <div class="panel-heading">
                     <div>
                         <p class="eyebrow">SELECTED CASE</p>
+
                         <h2 id="selectedCaseTitle">
                             Case Analysis Workspace
                         </h2>
@@ -272,21 +267,27 @@
                             <option value="Surveillance">
                                 Surveillance
                             </option>
+
                             <option value="Threatening Communication">
                                 Threatening Communication
                             </option>
+
                             <option value="Access Attempt">
                                 Access Attempt
                             </option>
+
                             <option value="Online Activity">
                                 Online Activity
                             </option>
+
                             <option value="Travel Pattern">
                                 Travel Pattern
                             </option>
+
                             <option value="Behavioral Change">
                                 Behavioral Change
                             </option>
+
                             <option value="Other">Other</option>
                         </select>
 
@@ -367,7 +368,10 @@
                 <article class="panel">
                     <div class="panel-heading">
                         <div>
-                            <p class="eyebrow">ANALYTIC JUDGMENT</p>
+                            <p class="eyebrow">
+                                ANALYTIC JUDGMENT
+                            </p>
+
                             <h2>Risk Assessments</h2>
                         </div>
                     </div>
@@ -508,12 +512,139 @@
                         </p>
                     </div>
                 </article>
+
+                <article class="panel mitigation-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <p class="eyebrow">RISK TREATMENT</p>
+                            <h2>Mitigation Actions</h2>
+                        </div>
+                    </div>
+
+                    <form id="mitigationForm">
+                        <label for="mitigationTitle">
+                            Action Title
+                        </label>
+
+                        <input
+                            id="mitigationTitle"
+                            type="text"
+                            maxlength="200"
+                            placeholder="Brief mitigation action title"
+                            required
+                        >
+
+                        <label for="mitigationDescription">
+                            Description
+                        </label>
+
+                        <textarea
+                            id="mitigationDescription"
+                            rows="4"
+                            placeholder="Describe the protective measure and intended outcome"
+                            required
+                        ></textarea>
+
+                        <div class="form-grid two-column">
+                            <div>
+                                <label for="mitigationOwner">
+                                    Owner
+                                </label>
+
+                                <input
+                                    id="mitigationOwner"
+                                    type="text"
+                                    maxlength="150"
+                                    placeholder="Team, office, or responsible person"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="mitigationPriority">
+                                    Priority
+                                </label>
+
+                                <select id="mitigationPriority">
+                                    <option value="Low">
+                                        Low
+                                    </option>
+
+                                    <option
+                                        value="Moderate"
+                                        selected
+                                    >
+                                        Moderate
+                                    </option>
+
+                                    <option value="High">
+                                        High
+                                    </option>
+
+                                    <option value="Critical">
+                                        Critical
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="mitigationStatus">
+                                    Status
+                                </label>
+
+                                <select id="mitigationStatus">
+                                    <option value="Planned">
+                                        Planned
+                                    </option>
+
+                                    <option value="In Progress">
+                                        In Progress
+                                    </option>
+
+                                    <option value="Completed">
+                                        Completed
+                                    </option>
+
+                                    <option value="Cancelled">
+                                        Cancelled
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="mitigationDueDate">
+                                    Due Date
+                                </label>
+
+                                <input
+                                    id="mitigationDueDate"
+                                    type="date"
+                                >
+                            </div>
+                        </div>
+
+                        <button
+                            class="primary-button"
+                            type="submit"
+                        >
+                            Add Mitigation Action
+                        </button>
+                    </form>
+
+                    <div
+                        id="mitigationList"
+                        class="analysis-list"
+                    >
+                        <p class="empty-state">
+                            No mitigation actions recorded.
+                        </p>
+                    </div>
+                </article>
             </div>
         </section>
     </main>
 
     <footer>
-        Protective Intelligence Risk Tracker · Version 0.2.0
+        Protective Intelligence Risk Tracker · Version 0.3.0
     </footer>
 
     <div

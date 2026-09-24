@@ -882,3 +882,20 @@ footer {
         max-width: calc(100% - 26px);
     }
 }
+
+
+.mitigation-panel {
+    grid-column: 1 / -1;
+}
+
+
+.mitigation-panel form {
+    max-width: 760px;
+}
+
+
+.mitigation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}

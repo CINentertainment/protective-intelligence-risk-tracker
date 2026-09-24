@@ -4,7 +4,6 @@ const state = {
     selectedCase: null,
 };
 
-
 const elements = {
     totalCases: document.getElementById("totalCases"),
     openCases: document.getElementById("openCases"),
@@ -30,9 +29,13 @@ const elements = {
     caseList: document.getElementById("caseList"),
 
     analysisWorkspace: document.getElementById("analysisWorkspace"),
-    closeWorkspaceButton: document.getElementById("closeWorkspaceButton"),
+    closeWorkspaceButton: document.getElementById(
+        "closeWorkspaceButton"
+    ),
     selectedCaseTitle: document.getElementById("selectedCaseTitle"),
-    selectedCaseSummary: document.getElementById("selectedCaseSummary"),
+    selectedCaseSummary: document.getElementById(
+        "selectedCaseSummary"
+    ),
 
     indicatorForm: document.getElementById("indicatorForm"),
     indicatorType: document.getElementById("indicatorType"),
@@ -65,14 +68,27 @@ const elements = {
     assessmentDate: document.getElementById("assessmentDate"),
     assessmentList: document.getElementById("assessmentList"),
 
+    mitigationForm: document.getElementById("mitigationForm"),
+    mitigationTitle: document.getElementById("mitigationTitle"),
+    mitigationDescription: document.getElementById(
+        "mitigationDescription"
+    ),
+    mitigationOwner: document.getElementById("mitigationOwner"),
+    mitigationPriority: document.getElementById(
+        "mitigationPriority"
+    ),
+    mitigationStatus: document.getElementById("mitigationStatus"),
+    mitigationDueDate: document.getElementById(
+        "mitigationDueDate"
+    ),
+    mitigationList: document.getElementById("mitigationList"),
+
     toast: document.getElementById("toast"),
 };
-
 
 function today() {
     return new Date().toISOString().split("T")[0];
 }
-
 
 function escapeHtml(value) {
     return String(value ?? "")
@@ -82,7 +98,6 @@ function escapeHtml(value) {
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
 }
-
 
 function formatDate(value) {
     if (!value) {
@@ -97,7 +112,6 @@ function formatDate(value) {
 
     return `${parts[1]}/${parts[2]}/${parts[0]}`;
 }
-
 
 function levelClass(level) {
     const normalized = String(level ?? "").toLowerCase();
@@ -117,14 +131,14 @@ function levelClass(level) {
         normalized === "low" ||
         normalized === "confirmed" ||
         normalized === "closed" ||
-        normalized === "mitigated"
+        normalized === "mitigated" ||
+        normalized === "completed"
     ) {
         return "green";
     }
 
     return "";
 }
-
 
 async function apiRequest(url, options = {}) {
     const requestOptions = {
@@ -164,9 +178,7 @@ async function apiRequest(url, options = {}) {
     return data;
 }
 
-
 let toastTimer;
-
 
 function showToast(message, isError = false) {
     clearTimeout(toastTimer);
@@ -182,7 +194,6 @@ function showToast(message, isError = false) {
         elements.toast.classList.add("hidden");
     }, 3500);
 }
-
 
 function updateStatistics() {
     const activeStatuses = new Set(["Open", "Monitoring"]);
@@ -206,7 +217,6 @@ function updateStatistics() {
         (caseItem) => caseItem.risk_level === "Critical"
     ).length;
 }
-
 
 function filteredCases() {
     const searchTerm = elements.searchInput.value
@@ -236,7 +246,6 @@ function filteredCases() {
     });
 }
 
-
 function renderCases() {
     const cases = filteredCases();
 
@@ -246,7 +255,6 @@ function renderCases() {
                 No cases match the current filters.
             </p>
         `;
-
         return;
     }
 
@@ -347,7 +355,6 @@ function renderCases() {
         .join("");
 }
 
-
 function renderSelectedCase() {
     const caseItem = state.selectedCase;
 
@@ -355,6 +362,10 @@ function renderSelectedCase() {
         elements.analysisWorkspace.classList.add("hidden");
         return;
     }
+
+    const indicators = caseItem.indicators || [];
+    const assessments = caseItem.assessments || [];
+    const mitigations = caseItem.mitigation_actions || [];
 
     elements.selectedCaseTitle.textContent =
         `${caseItem.case_number}: ${caseItem.title}`;
@@ -369,7 +380,8 @@ function renderSelectedCase() {
                 <span class="badge ${levelClass(
                     caseItem.priority
                 )}">
-                    Priority: ${escapeHtml(caseItem.priority)}
+                    Priority:
+                    ${escapeHtml(caseItem.priority)}
                 </span>
 
                 <span class="badge ${levelClass(
@@ -384,7 +396,8 @@ function renderSelectedCase() {
 
             <div class="case-meta">
                 <span>
-                    Opened: ${formatDate(caseItem.opened_date)}
+                    Opened:
+                    ${formatDate(caseItem.opened_date)}
                 </span>
 
                 <span>
@@ -393,22 +406,26 @@ function renderSelectedCase() {
                 </span>
 
                 <span>
-                    Indicators: ${caseItem.indicators.length}
+                    Indicators: ${indicators.length}
                 </span>
 
                 <span>
-                    Assessments: ${caseItem.assessments.length}
+                    Assessments: ${assessments.length}
+                </span>
+
+                <span>
+                    Mitigations: ${mitigations.length}
                 </span>
             </div>
         </div>
     `;
 
-    renderIndicators(caseItem.indicators);
-    renderAssessments(caseItem.assessments);
+    renderIndicators(indicators);
+    renderAssessments(assessments);
+    renderMitigations(mitigations);
 
     elements.analysisWorkspace.classList.remove("hidden");
 }
-
 
 function renderIndicators(indicators) {
     if (!indicators.length) {
@@ -417,7 +434,6 @@ function renderIndicators(indicators) {
                 No indicators recorded.
             </p>
         `;
-
         return;
     }
 
@@ -469,7 +485,6 @@ function renderIndicators(indicators) {
         .join("");
 }
 
-
 function renderAssessments(assessments) {
     if (!assessments.length) {
         elements.assessmentList.innerHTML = `
@@ -477,7 +492,6 @@ function renderAssessments(assessments) {
                 No assessments recorded.
             </p>
         `;
-
         return;
     }
 
@@ -563,6 +577,7 @@ function renderAssessments(assessments) {
                                 <strong>
                                     Recommended action:
                                 </strong><br>
+
                                 ${escapeHtml(
                                     assessment.recommended_action
                                 )}
@@ -587,6 +602,110 @@ function renderAssessments(assessments) {
         .join("");
 }
 
+function renderMitigations(mitigations) {
+    if (!mitigations.length) {
+        elements.mitigationList.innerHTML = `
+            <p class="empty-state">
+                No mitigation actions recorded.
+            </p>
+        `;
+        return;
+    }
+
+    elements.mitigationList.innerHTML = mitigations
+        .map((mitigation) => {
+            const canComplete =
+                mitigation.status !== "Completed";
+
+            return `
+                <article class="analysis-item">
+                    <div class="analysis-item-header">
+                        <div>
+                            <h3>
+                                ${escapeHtml(mitigation.title)}
+                            </h3>
+
+                            <div class="badge-group">
+                                <span class="badge ${levelClass(
+                                    mitigation.priority
+                                )}">
+                                    Priority:
+                                    ${escapeHtml(
+                                        mitigation.priority
+                                    )}
+                                </span>
+
+                                <span class="badge ${levelClass(
+                                    mitigation.status
+                                )}">
+                                    ${escapeHtml(mitigation.status)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mitigation-actions">
+                            ${
+                                canComplete
+                                    ? `
+                                        <button
+                                            class="small-button"
+                                            type="button"
+                                            data-action="complete-mitigation"
+                                            data-mitigation-id="${mitigation.id}"
+                                        >
+                                            Mark Completed
+                                        </button>
+                                    `
+                                    : ""
+                            }
+
+                            <button
+                                class="danger-button"
+                                type="button"
+                                data-action="delete-mitigation"
+                                data-mitigation-id="${mitigation.id}"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+
+                    <p>
+                        ${escapeHtml(mitigation.description)}
+                    </p>
+
+                    <div class="analysis-meta">
+                        <span>
+                            Owner:
+                            ${escapeHtml(
+                                mitigation.owner ||
+                                "Unassigned"
+                            )}
+                        </span>
+
+                        <span>
+                            Due:
+                            ${formatDate(mitigation.due_date)}
+                        </span>
+
+                        <span>
+                            Completed:
+                            ${
+                                mitigation.completed_date
+                                    ? formatDate(
+                                        mitigation.completed_date
+                                    )
+                                    : "Not completed"
+                            }
+                        </span>
+
+                        <span>ID: ${mitigation.id}</span>
+                    </div>
+                </article>
+            `;
+        })
+        .join("");
+}
 
 async function loadCases() {
     try {
@@ -621,13 +740,13 @@ async function loadCases() {
     }
 }
 
-
 async function loadSelectedCase(
     caseId,
     scrollToWorkspace = true
 ) {
     try {
         state.selectedCaseId = Number(caseId);
+
         state.selectedCase = await apiRequest(
             `/cases/${state.selectedCaseId}`
         );
@@ -646,7 +765,6 @@ async function loadSelectedCase(
     }
 }
 
-
 function closeAnalysisWorkspace() {
     state.selectedCaseId = null;
     state.selectedCase = null;
@@ -656,20 +774,16 @@ function closeAnalysisWorkspace() {
     renderCases();
 }
 
-
 function resetCaseForm() {
     elements.caseForm.reset();
-
     elements.editingCaseId.value = "";
     elements.caseFormTitle.textContent = "Create New Case";
     elements.cancelEditButton.classList.add("hidden");
-
     elements.caseStatus.value = "Open";
     elements.casePriority.value = "Routine";
     elements.caseRiskLevel.value = "Undetermined";
     elements.openedDate.value = today();
 }
-
 
 function beginCaseEdit(caseId) {
     const caseItem = state.cases.find(
@@ -677,7 +791,10 @@ function beginCaseEdit(caseId) {
     );
 
     if (!caseItem) {
-        showToast("The selected case could not be found.", true);
+        showToast(
+            "The selected case could not be found.",
+            true
+        );
         return;
     }
 
@@ -702,7 +819,6 @@ function beginCaseEdit(caseId) {
         block: "start",
     });
 }
-
 
 async function saveCase(event) {
     event.preventDefault();
@@ -745,7 +861,6 @@ async function saveCase(event) {
     }
 }
 
-
 async function deleteCase(caseId) {
     const caseItem = state.cases.find(
         (item) => item.id === Number(caseId)
@@ -754,7 +869,7 @@ async function deleteCase(caseId) {
     const confirmed = window.confirm(
         `Delete ${
             caseItem?.case_number || "this case"
-        } and all associated indicators and assessments?`
+        } and all associated intelligence records?`
     );
 
     if (!confirmed) {
@@ -772,13 +887,11 @@ async function deleteCase(caseId) {
 
         resetCaseForm();
         await loadCases();
-
         showToast("Case deleted.");
     } catch (error) {
         showToast(error.message, true);
     }
 }
-
 
 async function saveIndicator(event) {
     event.preventDefault();
@@ -812,13 +925,11 @@ async function saveIndicator(event) {
         elements.indicatorObservedDate.value = today();
 
         await loadCases();
-
         showToast("Indicator added.");
     } catch (error) {
         showToast(error.message, true);
     }
 }
-
 
 async function deleteIndicator(indicatorId) {
     if (state.selectedCaseId === null) {
@@ -838,13 +949,11 @@ async function deleteIndicator(indicatorId) {
         );
 
         await loadCases();
-
         showToast("Indicator deleted.");
     } catch (error) {
         showToast(error.message, true);
     }
 }
-
 
 async function saveAssessment(event) {
     event.preventDefault();
@@ -879,7 +988,6 @@ async function saveAssessment(event) {
         );
 
         elements.assessmentForm.reset();
-
         elements.threatLevel.value = "Low";
         elements.vulnerabilityLevel.value = "Low";
         elements.impactLevel.value = "Low";
@@ -887,13 +995,11 @@ async function saveAssessment(event) {
         elements.assessmentDate.value = today();
 
         await loadCases();
-
         showToast("Risk assessment recorded.");
     } catch (error) {
         showToast(error.message, true);
     }
 }
-
 
 async function deleteAssessment(assessmentId) {
     if (state.selectedCaseId === null) {
@@ -913,15 +1019,103 @@ async function deleteAssessment(assessmentId) {
         );
 
         await loadCases();
-
         showToast("Risk assessment deleted.");
     } catch (error) {
         showToast(error.message, true);
     }
 }
 
+async function saveMitigation(event) {
+    event.preventDefault();
 
-elements.caseForm.addEventListener("submit", saveCase);
+    if (state.selectedCaseId === null) {
+        showToast("Select a case first.", true);
+        return;
+    }
+
+    const payload = {
+        title: elements.mitigationTitle.value.trim(),
+        description:
+            elements.mitigationDescription.value.trim(),
+        owner:
+            elements.mitigationOwner.value.trim() || null,
+        priority: elements.mitigationPriority.value,
+        status: elements.mitigationStatus.value,
+        due_date: elements.mitigationDueDate.value || null,
+        completed_date: null,
+    };
+
+    try {
+        await apiRequest(
+            `/cases/${state.selectedCaseId}/mitigations`,
+            {
+                method: "POST",
+                body: JSON.stringify(payload),
+            }
+        );
+
+        elements.mitigationForm.reset();
+        elements.mitigationPriority.value = "Moderate";
+        elements.mitigationStatus.value = "Planned";
+
+        await loadCases();
+        showToast("Mitigation action added.");
+    } catch (error) {
+        showToast(error.message, true);
+    }
+}
+
+async function completeMitigation(mitigationId) {
+    if (state.selectedCaseId === null) {
+        return;
+    }
+
+    try {
+        await apiRequest(
+            `/cases/${state.selectedCaseId}/mitigations/${mitigationId}`,
+            {
+                method: "PATCH",
+                body: JSON.stringify({
+                    status: "Completed",
+                }),
+            }
+        );
+
+        await loadCases();
+        showToast("Mitigation action completed.");
+    } catch (error) {
+        showToast(error.message, true);
+    }
+}
+
+async function deleteMitigation(mitigationId) {
+    if (state.selectedCaseId === null) {
+        return;
+    }
+
+    if (!window.confirm("Delete this mitigation action?")) {
+        return;
+    }
+
+    try {
+        await apiRequest(
+            `/cases/${state.selectedCaseId}/mitigations/${mitigationId}`,
+            {
+                method: "DELETE",
+            }
+        );
+
+        await loadCases();
+        showToast("Mitigation action deleted.");
+    } catch (error) {
+        showToast(error.message, true);
+    }
+}
+
+elements.caseForm.addEventListener(
+    "submit",
+    saveCase
+);
 
 elements.cancelEditButton.addEventListener(
     "click",
@@ -936,8 +1130,15 @@ elements.refreshButton.addEventListener(
     }
 );
 
-elements.searchInput.addEventListener("input", renderCases);
-elements.statusFilter.addEventListener("change", renderCases);
+elements.searchInput.addEventListener(
+    "input",
+    renderCases
+);
+
+elements.statusFilter.addEventListener(
+    "change",
+    renderCases
+);
 
 elements.closeWorkspaceButton.addEventListener(
     "click",
@@ -954,30 +1155,38 @@ elements.assessmentForm.addEventListener(
     saveAssessment
 );
 
+elements.mitigationForm.addEventListener(
+    "submit",
+    saveMitigation
+);
 
-elements.caseList.addEventListener("click", async (event) => {
-    const button = event.target.closest("button[data-action]");
+elements.caseList.addEventListener(
+    "click",
+    async (event) => {
+        const button = event.target.closest(
+            "button[data-action]"
+        );
 
-    if (!button) {
-        return;
+        if (!button) {
+            return;
+        }
+
+        const action = button.dataset.action;
+        const caseId = Number(button.dataset.caseId);
+
+        if (action === "analyze") {
+            await loadSelectedCase(caseId);
+        }
+
+        if (action === "edit") {
+            beginCaseEdit(caseId);
+        }
+
+        if (action === "delete-case") {
+            await deleteCase(caseId);
+        }
     }
-
-    const action = button.dataset.action;
-    const caseId = Number(button.dataset.caseId);
-
-    if (action === "analyze") {
-        await loadSelectedCase(caseId);
-    }
-
-    if (action === "edit") {
-        beginCaseEdit(caseId);
-    }
-
-    if (action === "delete-case") {
-        await deleteCase(caseId);
-    }
-});
-
+);
 
 elements.indicatorList.addEventListener(
     "click",
@@ -996,7 +1205,6 @@ elements.indicatorList.addEventListener(
     }
 );
 
-
 elements.assessmentList.addEventListener(
     "click",
     async (event) => {
@@ -1014,6 +1222,36 @@ elements.assessmentList.addEventListener(
     }
 );
 
+elements.mitigationList.addEventListener(
+    "click",
+    async (event) => {
+        const button = event.target.closest(
+            "button[data-action]"
+        );
+
+        if (!button) {
+            return;
+        }
+
+        const mitigationId = Number(
+            button.dataset.mitigationId
+        );
+
+        if (
+            button.dataset.action ===
+            "complete-mitigation"
+        ) {
+            await completeMitigation(mitigationId);
+        }
+
+        if (
+            button.dataset.action ===
+            "delete-mitigation"
+        ) {
+            await deleteMitigation(mitigationId);
+        }
+    }
+);
 
 resetCaseForm();
 
