@@ -11,11 +11,9 @@ from app import models, schemas
 from app.database import Base, engine, get_db
 
 
-# Create the database tables.
 Base.metadata.create_all(bind=engine)
 
 
-# Locate the frontend files.
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
@@ -26,16 +24,30 @@ app = FastAPI(
         "A case-management API for tracking protective intelligence cases, "
         "indicators, assessments, and mitigation actions."
     ),
-    version="0.1.0",
+    version="0.2.0",
 )
 
 
-# Make the CSS and JavaScript files available.
 app.mount(
     "/static",
     StaticFiles(directory=STATIC_DIR),
     name="static",
 )
+
+
+def get_case_or_404(
+    case_id: int,
+    database: Session,
+) -> models.Case:
+    case = database.get(models.Case, case_id)
+
+    if case is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found.",
+        )
+
+    return case
 
 
 @app.get("/")
@@ -98,21 +110,13 @@ def list_cases(
 
 @app.get(
     "/cases/{case_id}",
-    response_model=schemas.CaseResponse,
+    response_model=schemas.CaseDetailResponse,
 )
 def get_case(
     case_id: int,
     database: Session = Depends(get_db),
 ):
-    case = database.get(models.Case, case_id)
-
-    if case is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Case not found.",
-        )
-
-    return case
+    return get_case_or_404(case_id, database)
 
 
 @app.patch(
@@ -124,14 +128,7 @@ def update_case(
     case_data: schemas.CaseUpdate,
     database: Session = Depends(get_db),
 ):
-    case = database.get(models.Case, case_id)
-
-    if case is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Case not found.",
-        )
-
+    case = get_case_or_404(case_id, database)
     changes = case_data.model_dump(exclude_unset=True)
 
     required_fields = {
@@ -147,7 +144,7 @@ def update_case(
     for field_name in required_fields:
         if field_name in changes and changes[field_name] is None:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"{field_name} cannot be null.",
             )
 
@@ -176,15 +173,172 @@ def delete_case(
     case_id: int,
     database: Session = Depends(get_db),
 ):
-    case = database.get(models.Case, case_id)
-
-    if case is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Case not found.",
-        )
+    case = get_case_or_404(case_id, database)
 
     database.delete(case)
+    database.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.post(
+    "/cases/{case_id}/indicators",
+    response_model=schemas.IndicatorResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_indicator(
+    case_id: int,
+    indicator_data: schemas.IndicatorCreate,
+    database: Session = Depends(get_db),
+):
+    get_case_or_404(case_id, database)
+
+    indicator = models.Indicator(
+        case_id=case_id,
+        **indicator_data.model_dump(),
+    )
+
+    database.add(indicator)
+    database.commit()
+    database.refresh(indicator)
+
+    return indicator
+
+
+@app.get(
+    "/cases/{case_id}/indicators",
+    response_model=list[schemas.IndicatorResponse],
+)
+def list_indicators(
+    case_id: int,
+    database: Session = Depends(get_db),
+):
+    get_case_or_404(case_id, database)
+
+    statement = (
+        select(models.Indicator)
+        .where(models.Indicator.case_id == case_id)
+        .order_by(
+            models.Indicator.observed_date.desc(),
+            models.Indicator.id.desc(),
+        )
+    )
+
+    return database.scalars(statement).all()
+
+
+@app.delete(
+    "/cases/{case_id}/indicators/{indicator_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_indicator(
+    case_id: int,
+    indicator_id: int,
+    database: Session = Depends(get_db),
+):
+    get_case_or_404(case_id, database)
+
+    indicator = database.get(models.Indicator, indicator_id)
+
+    if indicator is None or indicator.case_id != case_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Indicator not found.",
+        )
+
+    database.delete(indicator)
+    database.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.post(
+    "/cases/{case_id}/assessments",
+    response_model=schemas.RiskAssessmentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_assessment(
+    case_id: int,
+    assessment_data: schemas.RiskAssessmentCreate,
+    database: Session = Depends(get_db),
+):
+    case = get_case_or_404(case_id, database)
+
+    assessment = models.RiskAssessment(
+        case_id=case_id,
+        **assessment_data.model_dump(),
+    )
+
+    # Keep the case's displayed risk level synchronized with
+    # the latest formal risk assessment.
+    case.risk_level = assessment_data.overall_risk
+
+    database.add(assessment)
+    database.commit()
+    database.refresh(assessment)
+
+    return assessment
+
+
+@app.get(
+    "/cases/{case_id}/assessments",
+    response_model=list[schemas.RiskAssessmentResponse],
+)
+def list_assessments(
+    case_id: int,
+    database: Session = Depends(get_db),
+):
+    get_case_or_404(case_id, database)
+
+    statement = (
+        select(models.RiskAssessment)
+        .where(models.RiskAssessment.case_id == case_id)
+        .order_by(
+            models.RiskAssessment.assessment_date.desc(),
+            models.RiskAssessment.id.desc(),
+        )
+    )
+
+    return database.scalars(statement).all()
+
+
+@app.delete(
+    "/cases/{case_id}/assessments/{assessment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_assessment(
+    case_id: int,
+    assessment_id: int,
+    database: Session = Depends(get_db),
+):
+    case = get_case_or_404(case_id, database)
+    assessment = database.get(models.RiskAssessment, assessment_id)
+
+    if assessment is None or assessment.case_id != case_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Risk assessment not found.",
+        )
+
+    database.delete(assessment)
+    database.flush()
+
+    latest_statement = (
+        select(models.RiskAssessment)
+        .where(models.RiskAssessment.case_id == case_id)
+        .order_by(
+            models.RiskAssessment.assessment_date.desc(),
+            models.RiskAssessment.id.desc(),
+        )
+    )
+
+    latest_assessment = database.scalars(latest_statement).first()
+
+    if latest_assessment is None:
+        case.risk_level = "Undetermined"
+    else:
+        case.risk_level = latest_assessment.overall_risk
+
     database.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)

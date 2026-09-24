@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, Integer, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
@@ -9,32 +9,43 @@ from app.database import Base
 class Case(Base):
     __tablename__ = "cases"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
 
     case_number: Mapped[str] = mapped_column(
         String(50),
         unique=True,
-        nullable=False,
         index=True,
+        nullable=False,
     )
 
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+    )
+
+    summary: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
 
     status: Mapped[str] = mapped_column(
-        String(30),
+        String(50),
         nullable=False,
         default="Open",
     )
 
     priority: Mapped[str] = mapped_column(
-        String(30),
+        String(50),
         nullable=False,
         default="Routine",
     )
 
     risk_level: Mapped[str] = mapped_column(
-        String(30),
+        String(50),
         nullable=False,
         default="Undetermined",
     )
@@ -61,4 +72,134 @@ class Case(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    indicators: Mapped[list["Indicator"]] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+    )
+
+    assessments: Mapped[list["RiskAssessment"]] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+    )
+
+
+class Indicator(Base):
+    __tablename__ = "indicators"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
+
+    case_id: Mapped[int] = mapped_column(
+        ForeignKey("cases.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    indicator_type: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    description: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    source: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True,
+    )
+
+    credibility: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="Unassessed",
+    )
+
+    observed_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+        default=date.today,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    case: Mapped["Case"] = relationship(
+        back_populates="indicators",
+    )
+
+
+class RiskAssessment(Base):
+    __tablename__ = "risk_assessments"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
+
+    case_id: Mapped[int] = mapped_column(
+        ForeignKey("cases.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    threat_level: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    vulnerability_level: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    impact_level: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    overall_risk: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    rationale: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    recommended_action: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    assessed_by: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+
+    assessment_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+        default=date.today,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    case: Mapped["Case"] = relationship(
+        back_populates="assessments",
     )
