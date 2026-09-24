@@ -41,6 +41,20 @@ AssessmentLevel = Literal[
     "Critical",
 ]
 
+MitigationStatus = Literal[
+    "Planned",
+    "In Progress",
+    "Completed",
+    "Cancelled",
+]
+
+MitigationPriority = Literal[
+    "Low",
+    "Moderate",
+    "High",
+    "Critical",
+]
+
 
 class CaseBase(BaseModel):
     case_number: str = Field(
@@ -164,6 +178,72 @@ class RiskAssessmentResponse(RiskAssessmentBase):
     created_at: datetime
 
 
+class MitigationActionBase(BaseModel):
+    title: str = Field(
+        min_length=1,
+        max_length=200,
+    )
+
+    description: str = Field(
+        min_length=1,
+    )
+
+    owner: str | None = Field(
+        default=None,
+        max_length=150,
+    )
+
+    priority: MitigationPriority = "Moderate"
+    status: MitigationStatus = "Planned"
+    due_date: date | None = None
+    completed_date: date | None = None
+
+
+class MitigationActionCreate(MitigationActionBase):
+    pass
+
+
+class MitigationActionUpdate(BaseModel):
+    title: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+    )
+
+    description: str | None = Field(
+        default=None,
+        min_length=1,
+    )
+
+    owner: str | None = Field(
+        default=None,
+        max_length=150,
+    )
+
+    priority: MitigationPriority | None = None
+    status: MitigationStatus | None = None
+    due_date: date | None = None
+    completed_date: date | None = None
+
+
+class MitigationActionResponse(MitigationActionBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    case_id: int
+    created_at: datetime
+    updated_at: datetime
+
+
 class CaseDetailResponse(CaseResponse):
-    indicators: list[IndicatorResponse] = Field(default_factory=list)
-    assessments: list[RiskAssessmentResponse] = Field(default_factory=list)
+    indicators: list[IndicatorResponse] = Field(
+        default_factory=list
+    )
+
+    assessments: list[RiskAssessmentResponse] = Field(
+        default_factory=list
+    )
+
+    mitigation_actions: list[MitigationActionResponse] = Field(
+        default_factory=list
+    )

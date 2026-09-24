@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
@@ -24,7 +25,7 @@ app = FastAPI(
         "A case-management API for tracking protective intelligence cases, "
         "indicators, assessments, and mitigation actions."
     ),
-    version="0.2.0",
+    version="0.3.0",
 )
 
 
@@ -48,6 +49,25 @@ def get_case_or_404(
         )
 
     return case
+
+
+def get_mitigation_or_404(
+    case_id: int,
+    mitigation_id: int,
+    database: Session,
+) -> models.MitigationAction:
+    mitigation = database.get(
+        models.MitigationAction,
+        mitigation_id,
+    )
+
+    if mitigation is None or mitigation.case_id != case_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Mitigation action not found.",
+        )
+
+    return mitigation
 
 
 @app.get("/")
@@ -269,8 +289,6 @@ def create_assessment(
         **assessment_data.model_dump(),
     )
 
-    # Keep the case's displayed risk level synchronized with
-    # the latest formal risk assessment.
     case.risk_level = assessment_data.overall_risk
 
     database.add(assessment)
@@ -312,7 +330,10 @@ def delete_assessment(
     database: Session = Depends(get_db),
 ):
     case = get_case_or_404(case_id, database)
-    assessment = database.get(models.RiskAssessment, assessment_id)
+    assessment = database.get(
+        models.RiskAssessment,
+        assessment_id,
+    )
 
     if assessment is None or assessment.case_id != case_id:
         raise HTTPException(
@@ -332,13 +353,144 @@ def delete_assessment(
         )
     )
 
-    latest_assessment = database.scalars(latest_statement).first()
+    latest_assessment = database.scalars(
+        latest_statement
+    ).first()
 
     if latest_assessment is None:
         case.risk_level = "Undetermined"
     else:
         case.risk_level = latest_assessment.overall_risk
 
+    database.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.post(
+    "/cases/{case_id}/mitigations",
+    response_model=schemas.MitigationActionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_mitigation(
+    case_id: int,
+    mitigation_data: schemas.MitigationActionCreate,
+    database: Session = Depends(get_db),
+):
+    get_case_or_404(case_id, database)
+
+    action_data = mitigation_data.model_dump()
+
+    if (
+        action_data["status"] == "Completed"
+        and action_data["completed_date"] is None
+    ):
+        action_data["completed_date"] = date.today()
+
+    mitigation = models.MitigationAction(
+        case_id=case_id,
+        **action_data,
+    )
+
+    database.add(mitigation)
+    database.commit()
+    database.refresh(mitigation)
+
+    return mitigation
+
+
+@app.get(
+    "/cases/{case_id}/mitigations",
+    response_model=list[schemas.MitigationActionResponse],
+)
+def list_mitigations(
+    case_id: int,
+    database: Session = Depends(get_db),
+):
+    get_case_or_404(case_id, database)
+
+    statement = (
+        select(models.MitigationAction)
+        .where(models.MitigationAction.case_id == case_id)
+        .order_by(
+            models.MitigationAction.id.desc(),
+        )
+    )
+
+    return database.scalars(statement).all()
+
+
+@app.patch(
+    "/cases/{case_id}/mitigations/{mitigation_id}",
+    response_model=schemas.MitigationActionResponse,
+)
+def update_mitigation(
+    case_id: int,
+    mitigation_id: int,
+    mitigation_data: schemas.MitigationActionUpdate,
+    database: Session = Depends(get_db),
+):
+    get_case_or_404(case_id, database)
+
+    mitigation = get_mitigation_or_404(
+        case_id,
+        mitigation_id,
+        database,
+    )
+
+    changes = mitigation_data.model_dump(exclude_unset=True)
+
+    required_fields = {
+        "title",
+        "description",
+        "priority",
+        "status",
+    }
+
+    for field_name in required_fields:
+        if field_name in changes and changes[field_name] is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"{field_name} cannot be null.",
+            )
+
+    for field_name, value in changes.items():
+        setattr(mitigation, field_name, value)
+
+    if "status" in changes:
+        if (
+            changes["status"] == "Completed"
+            and "completed_date" not in changes
+        ):
+            mitigation.completed_date = date.today()
+
+        if changes["status"] != "Completed":
+            mitigation.completed_date = None
+
+    database.commit()
+    database.refresh(mitigation)
+
+    return mitigation
+
+
+@app.delete(
+    "/cases/{case_id}/mitigations/{mitigation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_mitigation(
+    case_id: int,
+    mitigation_id: int,
+    database: Session = Depends(get_db),
+):
+    get_case_or_404(case_id, database)
+
+    mitigation = get_mitigation_or_404(
+        case_id,
+        mitigation_id,
+        database,
+    )
+
+    database.delete(mitigation)
     database.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)

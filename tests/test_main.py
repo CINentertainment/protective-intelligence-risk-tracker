@@ -459,3 +459,160 @@ def test_delete_assessment_resets_case_risk():
     assert case_response.status_code == 200
     assert case_response.json()["risk_level"] == "Undetermined"
     assert case_response.json()["assessments"] == []
+
+def sample_mitigation() -> dict:
+    return {
+        "title": "Increase protective surveillance",
+        "description": (
+            "Assign additional personnel to monitor the primary entrance "
+            "and document suspicious activity."
+        ),
+        "owner": "Protective Security Team",
+        "priority": "High",
+        "status": "Planned",
+        "due_date": "2026-10-01",
+        "completed_date": None,
+    }
+
+
+def test_create_mitigation():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    response = client.post(
+        f"/cases/{case_id}/mitigations",
+        json=sample_mitigation(),
+    )
+
+    assert response.status_code == 201
+
+    mitigation = response.json()
+
+    assert mitigation["case_id"] == case_id
+    assert mitigation["title"] == "Increase protective surveillance"
+    assert mitigation["owner"] == "Protective Security Team"
+    assert mitigation["priority"] == "High"
+    assert mitigation["status"] == "Planned"
+    assert mitigation["due_date"] == "2026-10-01"
+    assert mitigation["completed_date"] is None
+    assert isinstance(mitigation["id"], int)
+
+
+def test_list_mitigations():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    client.post(
+        f"/cases/{case_id}/mitigations",
+        json=sample_mitigation(),
+    )
+
+    response = client.get(f"/cases/{case_id}/mitigations")
+
+    assert response.status_code == 200
+
+    mitigations = response.json()
+
+    assert len(mitigations) == 1
+    assert mitigations[0]["title"] == "Increase protective surveillance"
+    assert mitigations[0]["case_id"] == case_id
+
+
+def test_case_detail_includes_mitigations():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    client.post(
+        f"/cases/{case_id}/mitigations",
+        json=sample_mitigation(),
+    )
+
+    response = client.get(f"/cases/{case_id}")
+
+    assert response.status_code == 200
+    assert len(response.json()["mitigation_actions"]) == 1
+    assert (
+        response.json()["mitigation_actions"][0]["title"]
+        == "Increase protective surveillance"
+    )
+
+
+def test_update_mitigation():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    create_response = client.post(
+        f"/cases/{case_id}/mitigations",
+        json=sample_mitigation(),
+    )
+    mitigation_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/cases/{case_id}/mitigations/{mitigation_id}",
+        json={
+            "owner": "Operations Manager",
+            "priority": "Critical",
+            "status": "In Progress",
+        },
+    )
+
+    assert response.status_code == 200
+
+    mitigation = response.json()
+
+    assert mitigation["owner"] == "Operations Manager"
+    assert mitigation["priority"] == "Critical"
+    assert mitigation["status"] == "In Progress"
+
+
+def test_complete_mitigation_sets_completed_date():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    create_response = client.post(
+        f"/cases/{case_id}/mitigations",
+        json=sample_mitigation(),
+    )
+    mitigation_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/cases/{case_id}/mitigations/{mitigation_id}",
+        json={"status": "Completed"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "Completed"
+    assert response.json()["completed_date"] is not None
+
+
+def test_delete_mitigation():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    create_response = client.post(
+        f"/cases/{case_id}/mitigations",
+        json=sample_mitigation(),
+    )
+    mitigation_id = create_response.json()["id"]
+
+    delete_response = client.delete(
+        f"/cases/{case_id}/mitigations/{mitigation_id}"
+    )
+
+    assert delete_response.status_code == 204
+    assert delete_response.content == b""
+
+    list_response = client.get(f"/cases/{case_id}/mitigations")
+
+    assert list_response.status_code == 200
+    assert list_response.json() == []
+
+
+def test_create_mitigation_for_missing_case():
+    response = client.post(
+        "/cases/999/mitigations",
+        json=sample_mitigation(),
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Case not found."}

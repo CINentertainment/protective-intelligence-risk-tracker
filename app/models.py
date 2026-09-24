@@ -84,6 +84,11 @@ class Case(Base):
         cascade="all, delete-orphan",
     )
 
+    mitigation_actions: Mapped[list["MitigationAction"]] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+    )
+
 
 class Indicator(Base):
     __tablename__ = "indicators"
@@ -202,4 +207,74 @@ class RiskAssessment(Base):
 
     case: Mapped["Case"] = relationship(
         back_populates="assessments",
+    )
+
+
+class MitigationAction(Base):
+    __tablename__ = "mitigation_actions"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
+
+    case_id: Mapped[int] = mapped_column(
+        ForeignKey("cases.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    title: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+    )
+
+    description: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    owner: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+
+    priority: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="Moderate",
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="Planned",
+    )
+
+    due_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+
+    completed_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    case: Mapped["Case"] = relationship(
+        back_populates="mitigation_actions",
     )
