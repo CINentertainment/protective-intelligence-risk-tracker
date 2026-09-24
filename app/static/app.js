@@ -82,6 +82,7 @@ const elements = {
         "mitigationDueDate"
     ),
     mitigationList: document.getElementById("mitigationList"),
+    activityList: document.getElementById("activityList"),
 
     toast: document.getElementById("toast"),
 };
@@ -423,6 +424,7 @@ function renderSelectedCase() {
     renderIndicators(indicators);
     renderAssessments(assessments);
     renderMitigations(mitigations);
+    renderActivities(caseItem.activities || []);
 
     elements.analysisWorkspace.classList.remove("hidden");
 }
@@ -706,7 +708,117 @@ function renderMitigations(mitigations) {
         })
         .join("");
 }
+function formatDateTime(value) {
+    if (!value) {
+        return "Unknown time";
+    }
 
+    const parsedDate = new Date(value);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+        return value;
+    }
+
+    return parsedDate.toLocaleString([], {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+}
+
+function activityLabel(activityType) {
+    const labels = {
+        case_created: "Case Created",
+        case_updated: "Case Updated",
+        indicator_created: "Indicator Added",
+        indicator_deleted: "Indicator Deleted",
+        assessment_created: "Assessment Recorded",
+        assessment_deleted: "Assessment Deleted",
+        mitigation_created: "Mitigation Created",
+        mitigation_updated: "Mitigation Updated",
+        mitigation_deleted: "Mitigation Deleted",
+    };
+
+    return labels[activityType] || activityType
+        .split("_")
+        .map((word) => (
+            word.charAt(0).toUpperCase() + word.slice(1)
+        ))
+        .join(" ");
+}
+
+function activityCategory(activityType) {
+    if (activityType.startsWith("indicator_")) {
+        return "indicator";
+    }
+
+    if (activityType.startsWith("assessment_")) {
+        return "assessment";
+    }
+
+    if (activityType.startsWith("mitigation_")) {
+        return "mitigation";
+    }
+
+    return "case";
+}
+
+function renderActivities(activities) {
+    if (!activities.length) {
+        elements.activityList.innerHTML = `
+            <p class="empty-state">
+                No case activity recorded.
+            </p>
+        `;
+        return;
+    }
+
+    elements.activityList.innerHTML = activities
+        .map((activity) => `
+            <article class="activity-item">
+                <span
+                    class="activity-marker ${activityCategory(
+                        activity.activity_type
+                    )}"
+                    aria-hidden="true"
+                ></span>
+
+                <div class="activity-content">
+                    <div class="activity-header">
+                        <h3 class="activity-type">
+                            ${escapeHtml(
+                                activityLabel(
+                                    activity.activity_type
+                                )
+                            )}
+                        </h3>
+
+                        <time class="activity-time">
+                            ${escapeHtml(
+                                formatDateTime(
+                                    activity.created_at
+                                )
+                            )}
+                        </time>
+                    </div>
+
+                    <p class="activity-description">
+                        ${escapeHtml(activity.description)}
+                    </p>
+
+                    <p class="activity-actor">
+                        Recorded by:
+                        ${escapeHtml(
+                            activity.actor || "System"
+                        )}
+                    </p>
+                </div>
+            </article>
+        `)
+        .join("");
+}
 async function loadCases() {
     try {
         state.cases = await apiRequest("/cases");

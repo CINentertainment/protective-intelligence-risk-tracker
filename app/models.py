@@ -1,6 +1,14 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import (
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -87,6 +95,12 @@ class Case(Base):
     mitigation_actions: Mapped[list["MitigationAction"]] = relationship(
         back_populates="case",
         cascade="all, delete-orphan",
+    )
+
+    activities: Mapped[list["CaseActivity"]] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+        order_by="CaseActivity.created_at.desc()",
     )
 
 
@@ -277,4 +291,47 @@ class MitigationAction(Base):
 
     case: Mapped["Case"] = relationship(
         back_populates="mitigation_actions",
+    )
+
+
+class CaseActivity(Base):
+    __tablename__ = "case_activities"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
+
+    case_id: Mapped[int] = mapped_column(
+        ForeignKey("cases.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    activity_type: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        index=True,
+    )
+
+    description: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    actor: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+
+    case: Mapped["Case"] = relationship(
+        back_populates="activities",
     )

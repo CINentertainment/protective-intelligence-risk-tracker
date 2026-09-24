@@ -616,3 +616,211 @@ def test_create_mitigation_for_missing_case():
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Case not found."}
+
+
+def get_activity_types(case_id: int) -> list[str]:
+    response = client.get(f"/cases/{case_id}/activities")
+
+    assert response.status_code == 200
+
+    return [
+        activity["activity_type"]
+        for activity in response.json()
+    ]
+
+
+def test_case_creation_records_activity():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    response = client.get(f"/cases/{case_id}/activities")
+
+    assert response.status_code == 200
+
+    activities = response.json()
+
+    assert len(activities) == 1
+    assert activities[0]["case_id"] == case_id
+    assert activities[0]["activity_type"] == "case_created"
+    assert activities[0]["actor"] == "System"
+    assert "PI-2026-TEST-001" in activities[0]["description"]
+    assert "created_at" in activities[0]
+
+
+def test_case_detail_includes_activities():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    response = client.get(f"/cases/{case_id}")
+
+    assert response.status_code == 200
+
+    response_data = response.json()
+
+    assert "activities" in response_data
+    assert len(response_data["activities"]) == 1
+    assert (
+        response_data["activities"][0]["activity_type"]
+        == "case_created"
+    )
+
+
+def test_case_update_records_activity():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    update_response = client.patch(
+        f"/cases/{case_id}",
+        json={
+            "status": "Monitoring",
+            "priority": "High",
+        },
+    )
+
+    assert update_response.status_code == 200
+
+    activities_response = client.get(
+        f"/cases/{case_id}/activities"
+    )
+
+    assert activities_response.status_code == 200
+
+    activities = activities_response.json()
+
+    assert activities[0]["activity_type"] == "case_updated"
+    assert "status" in activities[0]["description"]
+    assert "priority" in activities[0]["description"]
+    assert activities[1]["activity_type"] == "case_created"
+
+
+def test_indicator_actions_record_activity():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    create_response = client.post(
+        f"/cases/{case_id}/indicators",
+        json=sample_indicator(),
+    )
+
+    assert create_response.status_code == 201
+
+    indicator_id = create_response.json()["id"]
+
+    delete_response = client.delete(
+        f"/cases/{case_id}/indicators/{indicator_id}"
+    )
+
+    assert delete_response.status_code == 204
+
+    activity_types = get_activity_types(case_id)
+
+    assert activity_types == [
+        "indicator_deleted",
+        "indicator_created",
+        "case_created",
+    ]
+
+
+def test_assessment_actions_record_activity():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    create_response = client.post(
+        f"/cases/{case_id}/assessments",
+        json=sample_assessment(),
+    )
+
+    assert create_response.status_code == 201
+
+    assessment_id = create_response.json()["id"]
+
+    activities_response = client.get(
+        f"/cases/{case_id}/activities"
+    )
+
+    assert activities_response.status_code == 200
+
+    created_activity = activities_response.json()[0]
+
+    assert created_activity["activity_type"] == "assessment_created"
+    assert created_activity["actor"] == (
+        "Protective Intelligence Analyst"
+    )
+    assert "Moderate to High" in created_activity["description"]
+
+    delete_response = client.delete(
+        f"/cases/{case_id}/assessments/{assessment_id}"
+    )
+
+    assert delete_response.status_code == 204
+
+    activity_types = get_activity_types(case_id)
+
+    assert activity_types == [
+        "assessment_deleted",
+        "assessment_created",
+        "case_created",
+    ]
+
+
+def test_mitigation_actions_record_activity():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    create_response = client.post(
+        f"/cases/{case_id}/mitigations",
+        json=sample_mitigation(),
+    )
+
+    assert create_response.status_code == 201
+
+    mitigation_id = create_response.json()["id"]
+
+    complete_response = client.patch(
+        f"/cases/{case_id}/mitigations/{mitigation_id}",
+        json={"status": "Completed"},
+    )
+
+    assert complete_response.status_code == 200
+
+    delete_response = client.delete(
+        f"/cases/{case_id}/mitigations/{mitigation_id}"
+    )
+
+    assert delete_response.status_code == 204
+
+    activities_response = client.get(
+        f"/cases/{case_id}/activities"
+    )
+
+    assert activities_response.status_code == 200
+
+    activities = activities_response.json()
+    activity_types = [
+        activity["activity_type"]
+        for activity in activities
+    ]
+
+    assert activity_types == [
+        "mitigation_deleted",
+        "mitigation_updated",
+        "mitigation_created",
+        "case_created",
+    ]
+
+    assert "Planned to Completed" in (
+        activities[1]["description"]
+    )
+
+    assert activities[2]["actor"] == (
+        "Protective Security Team"
+    )
+
+
+def test_activities_for_missing_case():
+    response = client.get("/cases/999/activities")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Case not found.",
+    }

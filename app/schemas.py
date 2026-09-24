@@ -235,6 +235,17 @@ class MitigationActionResponse(MitigationActionBase):
     updated_at: datetime
 
 
+class CaseActivityResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    case_id: int
+    activity_type: str
+    description: str
+    actor: str | None
+    created_at: datetime
+
+
 class CaseDetailResponse(CaseResponse):
     indicators: list[IndicatorResponse] = Field(
         default_factory=list
@@ -245,5 +256,9 @@ class CaseDetailResponse(CaseResponse):
     )
 
     mitigation_actions: list[MitigationActionResponse] = Field(
+        default_factory=list
+    )
+
+    activities: list[CaseActivityResponse] = Field(
         default_factory=list
     )

@@ -899,3 +899,148 @@ footer {
     flex-wrap: wrap;
     gap: 8px;
 }
+
+
+.activity-panel {
+    grid-column: 1 / -1;
+}
+
+.activity-list {
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+
+    margin-top: 18px;
+    padding-left: 28px;
+}
+
+.activity-list::before {
+    content: "";
+
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 8px;
+
+    width: 2px;
+
+    background: linear-gradient(
+        180deg,
+        var(--cyan),
+        rgba(37, 200, 237, 0.12)
+    );
+}
+
+.activity-item {
+    position: relative;
+
+    padding: 0 0 22px 18px;
+}
+
+.activity-item:last-child {
+    padding-bottom: 0;
+}
+
+.activity-marker {
+    position: absolute;
+    top: 5px;
+    left: -25px;
+
+    width: 13px;
+    height: 13px;
+
+    border: 2px solid var(--panel);
+    border-radius: 50%;
+
+    background: var(--cyan);
+
+    box-shadow:
+        0 0 0 2px rgba(37, 200, 237, 0.35),
+        0 0 14px rgba(37, 200, 237, 0.45);
+}
+
+.activity-marker.case {
+    background: var(--blue);
+}
+
+.activity-marker.indicator {
+    background: var(--cyan);
+}
+
+.activity-marker.assessment {
+    background: var(--amber);
+}
+
+.activity-marker.mitigation {
+    background: var(--green);
+}
+
+.activity-content {
+    padding: 14px 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 10px;
+
+    background: rgba(6, 17, 31, 0.48);
+}
+
+.activity-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+
+    margin-bottom: 7px;
+}
+
+.activity-type {
+    margin: 0;
+
+    color: var(--text);
+
+    font-size: 0.86rem;
+    font-weight: 750;
+    letter-spacing: 0.02em;
+}
+
+.activity-time {
+    flex-shrink: 0;
+
+    color: var(--muted);
+
+    font-size: 0.74rem;
+}
+
+.activity-description {
+    margin: 0 0 8px;
+
+    color: var(--text);
+
+    font-size: 0.86rem;
+    line-height: 1.5;
+}
+
+.activity-actor {
+    margin: 0;
+
+    color: var(--muted);
+
+    font-size: 0.76rem;
+}
+
+@media (max-width: 600px) {
+    .activity-list {
+        padding-left: 23px;
+    }
+
+    .activity-header {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .activity-time {
+        white-space: normal;
+    }
+}
