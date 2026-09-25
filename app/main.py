@@ -2,18 +2,17 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import models, schemas
+from app import models, reporting, schemas
 from app.database import Base, engine, get_db
 
 
 Base.metadata.create_all(bind=engine)
-
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -25,9 +24,8 @@ app = FastAPI(
         "A case-management API for tracking protective intelligence cases, "
         "indicators, assessments, mitigation actions, and case activity."
     ),
-    version="0.4.0",
+    version="0.5.0",
 )
-
 
 app.mount(
     "/static",
@@ -101,6 +99,23 @@ def read_root():
 @app.get("/dashboard", include_in_schema=False)
 def dashboard():
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get(
+    "/cases/{case_id}/report",
+    response_class=HTMLResponse,
+    include_in_schema=False,
+)
+def case_report(
+    case_id: int,
+    database: Session = Depends(get_db),
+):
+    case = get_case_or_404(case_id, database)
+
+    return HTMLResponse(
+        content=reporting.build_case_report(case),
+        status_code=status.HTTP_200_OK,
+    )
 
 
 @app.get("/health")
@@ -219,7 +234,7 @@ def update_case(
             case_id=case.id,
             activity_type="case_updated",
             description=(
-                f"Case record updated. Changed fields: "
+                "Case record updated. Changed fields: "
                 f"{readable_fields}."
             ),
             actor="System",
@@ -400,7 +415,7 @@ def create_assessment(
         case_id=case_id,
         activity_type="assessment_created",
         description=(
-            f"A risk assessment was recorded. Case risk changed "
+            "A risk assessment was recorded. Case risk changed "
             f"from {previous_risk} to "
             f"{assessment_data.overall_risk}."
         ),
@@ -553,9 +568,7 @@ def list_mitigations(
     statement = (
         select(models.MitigationAction)
         .where(models.MitigationAction.case_id == case_id)
-        .order_by(
-            models.MitigationAction.id.desc(),
-        )
+        .order_by(models.MitigationAction.id.desc())
     )
 
     return database.scalars(statement).all()

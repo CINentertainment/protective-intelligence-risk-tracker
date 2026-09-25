@@ -10,7 +10,6 @@ from app.main import app
 
 TEST_DATABASE_URL = "sqlite://"
 
-
 test_engine = create_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},
@@ -95,6 +94,21 @@ def sample_assessment():
     }
 
 
+def sample_mitigation() -> dict:
+    return {
+        "title": "Increase protective surveillance",
+        "description": (
+            "Assign additional personnel to monitor the primary entrance "
+            "and document suspicious activity."
+        ),
+        "owner": "Protective Security Team",
+        "priority": "High",
+        "status": "Planned",
+        "due_date": "2026-10-01",
+        "completed_date": None,
+    }
+
+
 def create_test_case():
     response = client.post(
         "/cases",
@@ -104,6 +118,17 @@ def create_test_case():
     assert response.status_code == 201
 
     return response.json()
+
+
+def get_activity_types(case_id: int) -> list[str]:
+    response = client.get(f"/cases/{case_id}/activities")
+
+    assert response.status_code == 200
+
+    return [
+        activity["activity_type"]
+        for activity in response.json()
+    ]
 
 
 def test_read_root():
@@ -460,20 +485,6 @@ def test_delete_assessment_resets_case_risk():
     assert case_response.json()["risk_level"] == "Undetermined"
     assert case_response.json()["assessments"] == []
 
-def sample_mitigation() -> dict:
-    return {
-        "title": "Increase protective surveillance",
-        "description": (
-            "Assign additional personnel to monitor the primary entrance "
-            "and document suspicious activity."
-        ),
-        "owner": "Protective Security Team",
-        "priority": "High",
-        "status": "Planned",
-        "due_date": "2026-10-01",
-        "completed_date": None,
-    }
-
 
 def test_create_mitigation():
     created_case = create_test_case()
@@ -545,6 +556,7 @@ def test_update_mitigation():
         f"/cases/{case_id}/mitigations",
         json=sample_mitigation(),
     )
+
     mitigation_id = create_response.json()["id"]
 
     response = client.patch(
@@ -573,6 +585,7 @@ def test_complete_mitigation_sets_completed_date():
         f"/cases/{case_id}/mitigations",
         json=sample_mitigation(),
     )
+
     mitigation_id = create_response.json()["id"]
 
     response = client.patch(
@@ -593,6 +606,7 @@ def test_delete_mitigation():
         f"/cases/{case_id}/mitigations",
         json=sample_mitigation(),
     )
+
     mitigation_id = create_response.json()["id"]
 
     delete_response = client.delete(
@@ -616,17 +630,6 @@ def test_create_mitigation_for_missing_case():
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Case not found."}
-
-
-def get_activity_types(case_id: int) -> list[str]:
-    response = client.get(f"/cases/{case_id}/activities")
-
-    assert response.status_code == 200
-
-    return [
-        activity["activity_type"]
-        for activity in response.json()
-    ]
 
 
 def test_case_creation_records_activity():
@@ -796,6 +799,7 @@ def test_mitigation_actions_record_activity():
     assert activities_response.status_code == 200
 
     activities = activities_response.json()
+
     activity_types = [
         activity["activity_type"]
         for activity in activities
@@ -824,3 +828,27 @@ def test_activities_for_missing_case():
     assert response.json() == {
         "detail": "Case not found.",
     }
+
+
+def test_case_report():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    response = client.get(f"/cases/{case_id}/report")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert created_case["case_number"] in response.text
+    assert created_case["title"] in response.text
+    assert "Case Overview" in response.text
+    assert "Indicators" in response.text
+    assert "Risk Assessments" in response.text
+    assert "Mitigation Actions" in response.text
+    assert "Activity Timeline" in response.text
+
+
+def test_case_report_for_missing_case():
+    response = client.get("/cases/999/report")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Case not found."}

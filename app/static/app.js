@@ -82,14 +82,16 @@ const elements = {
         "mitigationDueDate"
     ),
     mitigationList: document.getElementById("mitigationList"),
-    activityList: document.getElementById("activityList"),
 
+    activityList: document.getElementById("activityList"),
     toast: document.getElementById("toast"),
 };
+
 
 function today() {
     return new Date().toISOString().split("T")[0];
 }
+
 
 function escapeHtml(value) {
     return String(value ?? "")
@@ -99,6 +101,7 @@ function escapeHtml(value) {
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
 }
+
 
 function formatDate(value) {
     if (!value) {
@@ -113,6 +116,28 @@ function formatDate(value) {
 
     return `${parts[1]}/${parts[2]}/${parts[0]}`;
 }
+
+
+function formatDateTime(value) {
+    if (!value) {
+        return "Unknown time";
+    }
+
+    const parsedDate = new Date(value);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+        return value;
+    }
+
+    return parsedDate.toLocaleString([], {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+}
+
 
 function levelClass(level) {
     const normalized = String(level ?? "").toLowerCase();
@@ -140,6 +165,7 @@ function levelClass(level) {
 
     return "";
 }
+
 
 async function apiRequest(url, options = {}) {
     const requestOptions = {
@@ -179,7 +205,9 @@ async function apiRequest(url, options = {}) {
     return data;
 }
 
+
 let toastTimer;
+
 
 function showToast(message, isError = false) {
     clearTimeout(toastTimer);
@@ -196,8 +224,10 @@ function showToast(message, isError = false) {
     }, 3500);
 }
 
+
 function updateStatistics() {
     const activeStatuses = new Set(["Open", "Monitoring"]);
+
     const elevatedPriorities = new Set([
         "Elevated",
         "High",
@@ -218,6 +248,7 @@ function updateStatistics() {
         (caseItem) => caseItem.risk_level === "Critical"
     ).length;
 }
+
 
 function filteredCases() {
     const searchTerm = elements.searchInput.value
@@ -246,6 +277,7 @@ function filteredCases() {
         return matchesStatus && matchesSearch;
     });
 }
+
 
 function renderCases() {
     const cases = filteredCases();
@@ -332,6 +364,15 @@ function renderCases() {
                             Analyze
                         </button>
 
+                        <a
+                            class="small-button"
+                            href="/cases/${caseItem.id}/report"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            View Report
+                        </a>
+
                         <button
                             class="small-button"
                             type="button"
@@ -355,6 +396,7 @@ function renderCases() {
         })
         .join("");
 }
+
 
 function renderSelectedCase() {
     const caseItem = state.selectedCase;
@@ -429,6 +471,7 @@ function renderSelectedCase() {
     elements.analysisWorkspace.classList.remove("hidden");
 }
 
+
 function renderIndicators(indicators) {
     if (!indicators.length) {
         elements.indicatorList.innerHTML = `
@@ -486,6 +529,7 @@ function renderIndicators(indicators) {
         `)
         .join("");
 }
+
 
 function renderAssessments(assessments) {
     if (!assessments.length) {
@@ -604,6 +648,7 @@ function renderAssessments(assessments) {
         .join("");
 }
 
+
 function renderMitigations(mitigations) {
     if (!mitigations.length) {
         elements.mitigationList.innerHTML = `
@@ -708,25 +753,7 @@ function renderMitigations(mitigations) {
         })
         .join("");
 }
-function formatDateTime(value) {
-    if (!value) {
-        return "Unknown time";
-    }
 
-    const parsedDate = new Date(value);
-
-    if (Number.isNaN(parsedDate.getTime())) {
-        return value;
-    }
-
-    return parsedDate.toLocaleString([], {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-    });
-}
 
 function activityLabel(activityType) {
     const labels = {
@@ -749,6 +776,7 @@ function activityLabel(activityType) {
         .join(" ");
 }
 
+
 function activityCategory(activityType) {
     if (activityType.startsWith("indicator_")) {
         return "indicator";
@@ -764,6 +792,7 @@ function activityCategory(activityType) {
 
     return "case";
 }
+
 
 function renderActivities(activities) {
     if (!activities.length) {
@@ -819,6 +848,8 @@ function renderActivities(activities) {
         `)
         .join("");
 }
+
+
 async function loadCases() {
     try {
         state.cases = await apiRequest("/cases");
@@ -852,6 +883,7 @@ async function loadCases() {
     }
 }
 
+
 async function loadSelectedCase(
     caseId,
     scrollToWorkspace = true
@@ -877,6 +909,7 @@ async function loadSelectedCase(
     }
 }
 
+
 function closeAnalysisWorkspace() {
     state.selectedCaseId = null;
     state.selectedCase = null;
@@ -885,6 +918,7 @@ function closeAnalysisWorkspace() {
 
     renderCases();
 }
+
 
 function resetCaseForm() {
     elements.caseForm.reset();
@@ -896,6 +930,7 @@ function resetCaseForm() {
     elements.caseRiskLevel.value = "Undetermined";
     elements.openedDate.value = today();
 }
+
 
 function beginCaseEdit(caseId) {
     const caseItem = state.cases.find(
@@ -911,6 +946,7 @@ function beginCaseEdit(caseId) {
     }
 
     elements.editingCaseId.value = caseItem.id;
+
     elements.caseFormTitle.textContent =
         `Edit ${caseItem.case_number}`;
 
@@ -921,6 +957,7 @@ function beginCaseEdit(caseId) {
     elements.casePriority.value = caseItem.priority;
     elements.caseRiskLevel.value = caseItem.risk_level;
     elements.openedDate.value = caseItem.opened_date;
+
     elements.nextReviewDate.value =
         caseItem.next_review_date || "";
 
@@ -931,6 +968,7 @@ function beginCaseEdit(caseId) {
         block: "start",
     });
 }
+
 
 async function saveCase(event) {
     event.preventDefault();
@@ -973,6 +1011,7 @@ async function saveCase(event) {
     }
 }
 
+
 async function deleteCase(caseId) {
     const caseItem = state.cases.find(
         (item) => item.id === Number(caseId)
@@ -1004,6 +1043,7 @@ async function deleteCase(caseId) {
         showToast(error.message, true);
     }
 }
+
 
 async function saveIndicator(event) {
     event.preventDefault();
@@ -1043,6 +1083,7 @@ async function saveIndicator(event) {
     }
 }
 
+
 async function deleteIndicator(indicatorId) {
     if (state.selectedCaseId === null) {
         return;
@@ -1066,6 +1107,7 @@ async function deleteIndicator(indicatorId) {
         showToast(error.message, true);
     }
 }
+
 
 async function saveAssessment(event) {
     event.preventDefault();
@@ -1113,6 +1155,7 @@ async function saveAssessment(event) {
     }
 }
 
+
 async function deleteAssessment(assessmentId) {
     if (state.selectedCaseId === null) {
         return;
@@ -1136,6 +1179,7 @@ async function deleteAssessment(assessmentId) {
         showToast(error.message, true);
     }
 }
+
 
 async function saveMitigation(event) {
     event.preventDefault();
@@ -1177,6 +1221,7 @@ async function saveMitigation(event) {
     }
 }
 
+
 async function completeMitigation(mitigationId) {
     if (state.selectedCaseId === null) {
         return;
@@ -1199,6 +1244,7 @@ async function completeMitigation(mitigationId) {
         showToast(error.message, true);
     }
 }
+
 
 async function deleteMitigation(mitigationId) {
     if (state.selectedCaseId === null) {
@@ -1223,6 +1269,7 @@ async function deleteMitigation(mitigationId) {
         showToast(error.message, true);
     }
 }
+
 
 elements.caseForm.addEventListener(
     "submit",
