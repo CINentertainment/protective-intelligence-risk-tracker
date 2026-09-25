@@ -2,6 +2,7 @@ const state = {
     cases: [],
     selectedCaseId: null,
     selectedCase: null,
+    sortBy: "review-urgency",
 };
 
 const elements = {
@@ -26,6 +27,7 @@ const elements = {
     refreshButton: document.getElementById("refreshButton"),
     searchInput: document.getElementById("searchInput"),
     statusFilter: document.getElementById("statusFilter"),
+    sortSelect: null,
     caseList: document.getElementById("caseList"),
 
     analysisWorkspace: document.getElementById("analysisWorkspace"),
@@ -88,6 +90,30 @@ const elements = {
 };
 
 
+function createSortControl() {
+    const filterRow = elements.statusFilter?.closest(".filter-row");
+
+    if (!filterRow || document.getElementById("caseSort")) {
+        return;
+    }
+
+    const sortSelect = document.createElement("select");
+    sortSelect.id = "caseSort";
+    sortSelect.setAttribute("aria-label", "Sort cases");
+    sortSelect.innerHTML = `
+        <option value="review-urgency">Review urgency</option>
+        <option value="updated-newest">Recently updated</option>
+        <option value="opened-newest">Newest cases</option>
+        <option value="priority-high">Highest priority</option>
+        <option value="case-number">Case number</option>
+    `;
+
+    sortSelect.value = state.sortBy;
+    filterRow.appendChild(sortSelect);
+    elements.sortSelect = sortSelect;
+}
+
+
 function today() {
     return new Date().toISOString().split("T")[0];
 }
@@ -136,6 +162,122 @@ function formatDateTime(value) {
         hour: "numeric",
         minute: "2-digit",
     });
+}
+
+
+function dateOnly(value) {
+    if (!value) {
+        return null;
+    }
+
+    const parsedDate = new Date(`${value}T00:00:00`);
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+
+function reviewStatus(caseItem) {
+    if (["Closed", "Mitigated"].includes(caseItem.status)) {
+        return {
+            key: "inactive",
+            label: "Review not required",
+            rank: 5,
+        };
+    }
+
+    const reviewDate = dateOnly(caseItem.next_review_date);
+
+    if (!reviewDate) {
+        return {
+            key: "unscheduled",
+            label: "Review not scheduled",
+            rank: 3,
+        };
+    }
+
+    const currentDate = dateOnly(today());
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    const daysUntilReview = Math.round(
+        (reviewDate - currentDate) / millisecondsPerDay
+    );
+
+    if (daysUntilReview < 0) {
+        const overdueDays = Math.abs(daysUntilReview);
+        return {
+            key: "overdue",
+            label: `${overdueDays} day${overdueDays === 1 ? "" : "s"} overdue`,
+            rank: 0,
+        };
+    }
+
+    if (daysUntilReview === 0) {
+        return {
+            key: "due-today",
+            label: "Review due today",
+            rank: 1,
+        };
+    }
+
+    if (daysUntilReview <= 7) {
+        return {
+            key: "due-soon",
+            label: `Review due in ${daysUntilReview} day${daysUntilReview === 1 ? "" : "s"}`,
+            rank: 2,
+        };
+    }
+
+    return {
+        key: "scheduled",
+        label: `Review scheduled ${formatDate(caseItem.next_review_date)}`,
+        rank: 4,
+    };
+}
+
+
+function compareCases(firstCase, secondCase) {
+    const priorityRank = {
+        Critical: 0,
+        High: 1,
+        Elevated: 2,
+        Routine: 3,
+    };
+
+    if (state.sortBy === "review-urgency") {
+        const rankDifference =
+            reviewStatus(firstCase).rank -
+            reviewStatus(secondCase).rank;
+
+        if (rankDifference !== 0) {
+            return rankDifference;
+        }
+
+        return String(firstCase.next_review_date || "9999-12-31")
+            .localeCompare(
+                String(secondCase.next_review_date || "9999-12-31")
+            );
+    }
+
+    if (state.sortBy === "updated-newest") {
+        return new Date(secondCase.updated_at) -
+            new Date(firstCase.updated_at);
+    }
+
+    if (state.sortBy === "opened-newest") {
+        return String(secondCase.opened_date)
+            .localeCompare(String(firstCase.opened_date));
+    }
+
+    if (state.sortBy === "priority-high") {
+        return (
+            (priorityRank[firstCase.priority] ?? 99) -
+            (priorityRank[secondCase.priority] ?? 99)
+        );
+    }
+
+    return String(firstCase.case_number).localeCompare(
+        String(secondCase.case_number),
+        undefined,
+        {numeric: true, sensitivity: "base"}
+    );
 }
 
 
@@ -275,7 +417,7 @@ function filteredCases() {
             searchableText.includes(searchTerm);
 
         return matchesStatus && matchesSearch;
-    });
+    }).sort(compareCases);
 }
 
 
@@ -301,9 +443,11 @@ function renderCases() {
             const priorityClass =
                 `priority-${caseItem.priority.toLowerCase()}`;
 
+            const review = reviewStatus(caseItem);
+
             return `
                 <article
-                    class="case-card ${priorityClass} ${selected}"
+                    class="case-card ${priorityClass} review-${review.key} ${selected}"
                     data-case-id="${caseItem.id}"
                 >
                     <div class="case-card-header">
@@ -332,6 +476,10 @@ function renderCases() {
                             )}">
                                 Risk:
                                 ${escapeHtml(caseItem.risk_level)}
+                            </span>
+
+                            <span class="badge review-badge review-${review.key}">
+                                ${escapeHtml(review.label)}
                             </span>
                         </div>
                     </div>
@@ -1297,6 +1445,16 @@ elements.searchInput.addEventListener(
 elements.statusFilter.addEventListener(
     "change",
     renderCases
+);
+
+createSortControl();
+
+elements.sortSelect.addEventListener(
+    "change",
+    () => {
+        state.sortBy = elements.sortSelect.value;
+        renderCases();
+    }
 );
 
 elements.closeWorkspaceButton.addEventListener(

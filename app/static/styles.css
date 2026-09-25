@@ -458,7 +458,7 @@ select {
     margin-bottom: 13px;
 
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 160px;
+    grid-template-columns: minmax(0, 1fr) 160px 180px;
     gap: 10px;
 }
 
@@ -1043,4 +1043,63 @@ footer {
     .activity-time {
         white-space: normal;
     }
+}
+
+
+.review-badge.review-overdue,
+.review-badge.review-due-today {
+    border-color: rgba(255, 100, 124, 0.72);
+    background: rgba(255, 100, 124, 0.14);
+    color: #ff8da0;
+}
+
+
+.review-badge.review-due-soon {
+    border-color: rgba(245, 185, 66, 0.68);
+    background: rgba(245, 185, 66, 0.12);
+    color: #ffd071;
+}
+
+
+.review-badge.review-unscheduled {
+    border-color: rgba(72, 166, 255, 0.62);
+    background: rgba(72, 166, 255, 0.1);
+    color: #79bdff;
+}
+
+
+.review-badge.review-scheduled {
+    border-color: rgba(60, 230, 160, 0.42);
+    background: rgba(60, 230, 160, 0.07);
+    color: var(--green);
+}
+
+
+.review-badge.review-inactive {
+    opacity: 0.72;
+}
+
+
+.case-card.review-overdue {
+    border-color: rgba(255, 100, 124, 0.6);
+    box-shadow: inset 0 0 0 1px rgba(255, 100, 124, 0.08);
+}
+
+
+.case-card.review-due-today {
+    border-color: rgba(255, 100, 124, 0.72);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 100, 124, 0.1),
+        0 0 18px rgba(255, 100, 124, 0.08);
+}
+
+
+.case-card.review-due-soon {
+    border-color: rgba(245, 185, 66, 0.5);
+    box-shadow: inset 0 0 0 1px rgba(245, 185, 66, 0.06);
+}
+
+
+#caseSort {
+    min-width: 0;
 }
