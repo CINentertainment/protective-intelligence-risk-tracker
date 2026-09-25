@@ -6,7 +6,7 @@ The Protective Intelligence Risk Tracker allows analysts and security profession
 
 ## Current Version
 
-**Version 0.5.0 — Professional MVP Development**
+**Version 0.6.0 — Professional MVP**
 
 The application is under active development. The current version is intended for demonstration, education, and software-development purposes.
 
@@ -15,6 +15,8 @@ The application is under active development. The current version is intended for
 ## Current Capabilities
 
 - Create, view, search, filter, update, and delete cases
+- Sort cases by review urgency, update date, creation date, priority, or case number
+- Identify overdue, due-today, due-soon, scheduled, and unscheduled case reviews
 - Record protective-intelligence indicators
 - Document source and credibility information
 - Conduct structured risk assessments
@@ -139,9 +141,10 @@ Run the complete test suite:
 python -m pytest -v
 ```
 
-The current test suite contains 37 automated tests covering:
+The current test suite contains 39 automated tests covering:
 
 - Health and root endpoints
+- Dashboard availability and application-version consistency
 - Case CRUD operations
 - Duplicate-case validation
 - Indicator operations
@@ -192,14 +195,17 @@ Use the report page’s **Print / Save as PDF** button to print the report or sa
 
 ## Development Roadmap
 
-### Version 0.6.0 — Professional MVP Polish
+### Version 0.6.0 — Professional MVP (Current)
 
 - Case sorting
 - Overdue-review warnings
-- Overdue-mitigation warnings
-- Case archiving
 - Interface and validation improvements
 - Expanded automated testing
+
+### Planned Professional MVP Enhancements
+
+- Overdue-mitigation warnings
+- Case archiving
 
 ### Version 0.7.0 — Authentication
 

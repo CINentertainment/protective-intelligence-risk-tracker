@@ -24,7 +24,7 @@ app = FastAPI(
         "A case-management API for tracking protective intelligence cases, "
         "indicators, assessments, mitigation actions, and case activity."
     ),
-    version="0.5.0",
+    version="0.6.0",
 )
 
 app.mount(
@@ -92,7 +92,7 @@ def read_root():
     return {
         "application": "Protective Intelligence Risk Tracker",
         "status": "operational",
-        "version": "0.1.0",
+        "version": "0.6.0",
     }
 
 
