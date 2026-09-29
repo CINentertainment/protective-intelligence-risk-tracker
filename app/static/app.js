@@ -232,6 +232,61 @@ function reviewStatus(caseItem) {
     };
 }
 
+function mitigationDeadlineStatus(mitigation) {
+    if (["Completed", "Cancelled"].includes(mitigation.status)) {
+        return {
+            key: "inactive",
+            label: mitigation.status,
+        };
+    }
+
+    const dueDate = dateOnly(mitigation.due_date);
+
+    if (!dueDate) {
+        return {
+            key: "unscheduled",
+            label: "Due date not scheduled",
+        };
+    }
+
+    const currentDate = dateOnly(today());
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    const daysUntilDue = Math.round(
+        (dueDate - currentDate) / millisecondsPerDay
+    );
+
+    if (daysUntilDue < 0) {
+        const overdueDays = Math.abs(daysUntilDue);
+
+        return {
+            key: "overdue",
+            label: `${overdueDays} day${
+                overdueDays === 1 ? "" : "s"
+            } overdue`,
+        };
+    }
+
+    if (daysUntilDue === 0) {
+        return {
+            key: "due-today",
+            label: "Due today",
+        };
+    }
+
+    if (daysUntilDue <= 7) {
+        return {
+            key: "due-soon",
+            label: `Due in ${daysUntilDue} day${
+                daysUntilDue === 1 ? "" : "s"
+            }`,
+        };
+    }
+
+    return {
+        key: "scheduled",
+        label: `Due ${formatDate(mitigation.due_date)}`,
+    };
+}
 
 function compareCases(firstCase, secondCase) {
     const priorityRank = {
@@ -812,8 +867,13 @@ function renderMitigations(mitigations) {
             const canComplete =
                 mitigation.status !== "Completed";
 
+            const deadline =
+                mitigationDeadlineStatus(mitigation);
+
             return `
-                <article class="analysis-item">
+                <article
+                    class="analysis-item mitigation-${deadline.key}"
+                >
                     <div class="analysis-item-header">
                         <div>
                             <h3>
@@ -833,7 +893,15 @@ function renderMitigations(mitigations) {
                                 <span class="badge ${levelClass(
                                     mitigation.status
                                 )}">
-                                    ${escapeHtml(mitigation.status)}
+                                    ${escapeHtml(
+                                        mitigation.status
+                                    )}
+                                </span>
+
+                                <span
+                                    class="badge mitigation-deadline-badge mitigation-${deadline.key}"
+                                >
+                                    ${escapeHtml(deadline.label)}
                                 </span>
                             </div>
                         </div>

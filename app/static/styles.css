@@ -1103,3 +1103,76 @@ footer {
 #caseSort {
     min-width: 0;
 }
+
+/* Mitigation deadline warnings */
+
+.mitigation-deadline-badge.mitigation-overdue,
+.mitigation-deadline-badge.mitigation-due-today {
+    border-color: rgba(255, 100, 124, 0.72);
+    background: rgba(255, 100, 124, 0.14);
+    color: #ff8da0;
+}
+
+.mitigation-deadline-badge.mitigation-due-soon {
+    border-color: rgba(245, 185, 66, 0.68);
+    background: rgba(245, 185, 66, 0.12);
+    color: #ffd071;
+}
+
+.mitigation-deadline-badge.mitigation-unscheduled {
+    border-color: rgba(72, 166, 255, 0.62);
+    background: rgba(72, 166, 255, 0.1);
+    color: #79bdff;
+}
+
+.mitigation-deadline-badge.mitigation-scheduled {
+    border-color: rgba(60, 230, 160, 0.42);
+    background: rgba(60, 230, 160, 0.07);
+    color: var(--green);
+}
+
+.mitigation-deadline-badge.mitigation-inactive {
+    border-color: rgba(60, 230, 160, 0.42);
+    background: rgba(60, 230, 160, 0.07);
+    color: var(--green);
+    opacity: 0.82;
+}
+
+.analysis-item.mitigation-overdue {
+    border-color: rgba(255, 100, 124, 0.6);
+    box-shadow:
+        inset 3px 0 0 rgba(255, 100, 124, 0.82),
+        inset 0 0 0 1px rgba(255, 100, 124, 0.06);
+}
+
+.analysis-item.mitigation-due-today {
+    border-color: rgba(255, 100, 124, 0.72);
+    box-shadow:
+        inset 3px 0 0 rgba(255, 100, 124, 0.92),
+        inset 0 0 0 1px rgba(255, 100, 124, 0.08),
+        0 0 18px rgba(255, 100, 124, 0.08);
+}
+
+.analysis-item.mitigation-due-soon {
+    border-color: rgba(245, 185, 66, 0.5);
+    box-shadow:
+        inset 3px 0 0 rgba(245, 185, 66, 0.8),
+        inset 0 0 0 1px rgba(245, 185, 66, 0.05);
+}
+
+.analysis-item.mitigation-unscheduled {
+    border-color: rgba(72, 166, 255, 0.38);
+    box-shadow:
+        inset 3px 0 0 rgba(72, 166, 255, 0.68);
+}
+
+.analysis-item.mitigation-scheduled {
+    box-shadow:
+        inset 3px 0 0 rgba(60, 230, 160, 0.48);
+}
+
+.analysis-item.mitigation-inactive {
+    border-color: rgba(60, 230, 160, 0.3);
+    box-shadow:
+        inset 3px 0 0 rgba(60, 230, 160, 0.58);
+}
