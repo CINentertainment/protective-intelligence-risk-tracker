@@ -183,7 +183,7 @@
                 <div class="panel-heading">
                     <div>
                         <p class="eyebrow">OPERATIONAL PICTURE</p>
-                        <h2>Active Case Register</h2>
+                        <h2 id="caseRegisterTitle">Active Case Register</h2>
                     </div>
 
                     <button
@@ -213,6 +213,19 @@
                         </option>
                         <option value="Closed">Closed</option>
                     </select>
+                    <select id="archiveFilter">
+    <option value="active">
+        Active cases
+    </option>
+
+    <option value="archived">
+        Archived cases
+    </option>
+
+    <option value="all">
+        All cases
+    </option>
+</select>
                 </div>
 
                 <div id="caseList" class="case-list">
