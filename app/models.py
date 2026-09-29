@@ -1,6 +1,7 @@
 from datetime import date, datetime
 
 from sqlalchemy import (
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
@@ -66,6 +67,19 @@ class Case(Base):
 
     next_review_date: Mapped[date | None] = mapped_column(
         Date,
+        nullable=True,
+    )
+
+    is_archived: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="0",
+        index=True,
+    )
+
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
         nullable=True,
     )
 

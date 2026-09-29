@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
@@ -20,6 +20,51 @@ SessionLocal = sessionmaker(
 
 class Base(DeclarativeBase):
     pass
+
+
+def ensure_case_archive_columns() -> None:
+    """
+    Add case-archiving columns to an existing SQLite database.
+
+    SQLAlchemy's create_all() creates missing tables, but it does not add
+    new columns to tables that already exist. This compatibility migration
+    preserves the current database and adds only the missing columns.
+    """
+    with engine.begin() as connection:
+        inspector = inspect(connection)
+
+        if "cases" not in inspector.get_table_names():
+            return
+
+        existing_columns = {
+            column["name"]
+            for column in inspector.get_columns("cases")
+        }
+
+        if "is_archived" not in existing_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE cases "
+                    "ADD COLUMN is_archived BOOLEAN "
+                    "NOT NULL DEFAULT 0"
+                )
+            )
+
+        if "archived_at" not in existing_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE cases "
+                    "ADD COLUMN archived_at DATETIME"
+                )
+            )
+
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS "
+                "ix_cases_is_archived "
+                "ON cases (is_archived)"
+            )
+        )
 
 
 def get_db() -> Generator[Session, None, None]:

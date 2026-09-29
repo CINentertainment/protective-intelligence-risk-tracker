@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
@@ -9,10 +9,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models, reporting, schemas
-from app.database import Base, engine, get_db
+from app.database import (
+    Base,
+    engine,
+    ensure_case_archive_columns,
+    get_db,
+)
 
 
 Base.metadata.create_all(bind=engine)
+ensure_case_archive_columns()
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -168,9 +174,17 @@ def create_case(
     response_model=list[schemas.CaseResponse],
 )
 def list_cases(
+    include_archived: bool = False,
     database: Session = Depends(get_db),
 ):
-    statement = select(models.Case).order_by(models.Case.id)
+    statement = select(models.Case)
+
+    if not include_archived:
+        statement = statement.where(
+            models.Case.is_archived.is_(False)
+        )
+
+    statement = statement.order_by(models.Case.id)
 
     return database.scalars(statement).all()
 
@@ -250,6 +264,66 @@ def update_case(
             status_code=status.HTTP_409_CONFLICT,
             detail="A case with this case number already exists.",
         )
+
+    return case
+
+
+@app.patch(
+    "/cases/{case_id}/archive",
+    response_model=schemas.CaseResponse,
+)
+def archive_case(
+    case_id: int,
+    database: Session = Depends(get_db),
+):
+    case = get_case_or_404(case_id, database)
+
+    if not case.is_archived:
+        case.is_archived = True
+        case.archived_at = datetime.now()
+
+        record_activity(
+            database=database,
+            case_id=case.id,
+            activity_type="case_archived",
+            description=(
+                f"Case {case.case_number} was archived."
+            ),
+            actor="System",
+        )
+
+        database.commit()
+        database.refresh(case)
+
+    return case
+
+
+@app.patch(
+    "/cases/{case_id}/restore",
+    response_model=schemas.CaseResponse,
+)
+def restore_case(
+    case_id: int,
+    database: Session = Depends(get_db),
+):
+    case = get_case_or_404(case_id, database)
+
+    if case.is_archived:
+        case.is_archived = False
+        case.archived_at = None
+
+        record_activity(
+            database=database,
+            case_id=case.id,
+            activity_type="case_restored",
+            description=(
+                f"Case {case.case_number} was restored."
+            ),
+            actor="System",
+        )
+
+        database.commit()
+        database.refresh(case)
 
     return case
 

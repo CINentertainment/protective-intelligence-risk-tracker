@@ -111,6 +111,8 @@ class CaseResponse(CaseBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    is_archived: bool
+    archived_at: datetime | None
     created_at: datetime
     updated_at: datetime
 

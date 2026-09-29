@@ -865,3 +865,111 @@ def test_case_report_for_missing_case():
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Case not found."}
+
+def test_archive_case():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    response = client.patch(f"/cases/{case_id}/archive")
+
+    assert response.status_code == 200
+    assert response.json()["is_archived"] is True
+    assert response.json()["archived_at"] is not None
+
+
+def test_archived_case_hidden_from_default_list():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    archive_response = client.patch(
+        f"/cases/{case_id}/archive"
+    )
+
+    assert archive_response.status_code == 200
+
+    list_response = client.get("/cases")
+
+    assert list_response.status_code == 200
+    assert list_response.json() == []
+
+
+def test_include_archived_cases_in_list():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    archive_response = client.patch(
+        f"/cases/{case_id}/archive"
+    )
+
+    assert archive_response.status_code == 200
+
+    list_response = client.get(
+        "/cases",
+        params={"include_archived": True},
+    )
+
+    assert list_response.status_code == 200
+    assert len(list_response.json()) == 1
+    assert list_response.json()[0]["id"] == case_id
+    assert list_response.json()[0]["is_archived"] is True
+
+
+def test_restore_case():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    client.patch(f"/cases/{case_id}/archive")
+
+    restore_response = client.patch(
+        f"/cases/{case_id}/restore"
+    )
+
+    assert restore_response.status_code == 200
+    assert restore_response.json()["is_archived"] is False
+    assert restore_response.json()["archived_at"] is None
+
+    list_response = client.get("/cases")
+
+    assert list_response.status_code == 200
+    assert len(list_response.json()) == 1
+    assert list_response.json()[0]["id"] == case_id
+
+
+def test_archive_and_restore_record_activity():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    client.patch(f"/cases/{case_id}/archive")
+    client.patch(f"/cases/{case_id}/restore")
+
+    activity_response = client.get(
+        f"/cases/{case_id}/activities"
+    )
+
+    assert activity_response.status_code == 200
+
+    activity_types = [
+        activity["activity_type"]
+        for activity in activity_response.json()
+    ]
+
+    assert "case_archived" in activity_types
+    assert "case_restored" in activity_types
+
+
+def test_archive_missing_case():
+    response = client.patch("/cases/999/archive")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Case not found."
+    }
+
+
+def test_restore_missing_case():
+    response = client.patch("/cases/999/restore")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Case not found."
+    }
