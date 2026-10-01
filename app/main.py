@@ -13,12 +13,14 @@ from app.database import (
     Base,
     engine,
     ensure_case_archive_columns,
+    ensure_case_assignment_columns,
     get_db,
 )
 
 
 Base.metadata.create_all(bind=engine)
 ensure_case_archive_columns()
+ensure_case_assignment_columns()
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -138,7 +140,15 @@ def create_case(
     case_data: schemas.CaseCreate,
     database: Session = Depends(get_db),
 ):
-    case = models.Case(**case_data.model_dump())
+    case_values = case_data.model_dump()
+
+    if (
+        case_values["assigned_analyst"]
+        or case_values["responsible_team"]
+    ):
+        case_values["assigned_at"] = datetime.now()
+
+    case = models.Case(**case_values)
 
     database.add(case)
 
@@ -156,6 +166,34 @@ def create_case(
             actor="System",
         )
 
+        if case.assigned_analyst or case.responsible_team:
+            assignment_parts = []
+
+            if case.assigned_analyst:
+                assignment_parts.append(
+                    f"analyst {case.assigned_analyst}"
+                )
+
+            if case.responsible_team:
+                assignment_parts.append(
+                    f"team {case.responsible_team}"
+                )
+
+            assignment_description = " and ".join(
+                assignment_parts
+            )
+
+            record_activity(
+                database=database,
+                case_id=case.id,
+                activity_type="case_assigned",
+                description=(
+                    f"Case {case.case_number} was assigned to "
+                    f"{assignment_description}."
+                ),
+                actor=case.assigned_analyst or "System",
+            )
+
         database.commit()
         database.refresh(case)
     except IntegrityError:
@@ -163,7 +201,9 @@ def create_case(
 
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="A case with this case number already exists.",
+            detail=(
+                "A case with this case number already exists."
+            ),
         )
 
     return case
@@ -229,6 +269,8 @@ def update_case(
                 detail=f"{field_name} cannot be null.",
             )
 
+    previous_analyst = case.assigned_analyst
+    previous_team = case.responsible_team
     changed_fields = []
 
     for field_name, value in changes.items():
@@ -236,6 +278,17 @@ def update_case(
             changed_fields.append(field_name)
 
         setattr(case, field_name, value)
+
+    assignment_changed = (
+        "assigned_analyst" in changed_fields
+        or "responsible_team" in changed_fields
+    )
+
+    if assignment_changed:
+        if case.assigned_analyst or case.responsible_team:
+            case.assigned_at = datetime.now()
+        else:
+            case.assigned_at = None
 
     if changed_fields:
         readable_fields = ", ".join(
@@ -254,6 +307,61 @@ def update_case(
             actor="System",
         )
 
+    if assignment_changed:
+        previously_assigned = bool(
+            previous_analyst or previous_team
+        )
+
+        currently_assigned = bool(
+            case.assigned_analyst or case.responsible_team
+        )
+
+        if not currently_assigned:
+            activity_type = "case_unassigned"
+            assignment_description = (
+                f"Case {case.case_number} assignment was cleared."
+            )
+            activity_actor = "System"
+        else:
+            assignment_parts = []
+
+            if case.assigned_analyst:
+                assignment_parts.append(
+                    f"analyst {case.assigned_analyst}"
+                )
+
+            if case.responsible_team:
+                assignment_parts.append(
+                    f"team {case.responsible_team}"
+                )
+
+            assigned_to = " and ".join(assignment_parts)
+
+            if previously_assigned:
+                activity_type = "case_reassigned"
+                assignment_description = (
+                    f"Case {case.case_number} was reassigned to "
+                    f"{assigned_to}."
+                )
+            else:
+                activity_type = "case_assigned"
+                assignment_description = (
+                    f"Case {case.case_number} was assigned to "
+                    f"{assigned_to}."
+                )
+
+            activity_actor = (
+                case.assigned_analyst or "System"
+            )
+
+        record_activity(
+            database=database,
+            case_id=case.id,
+            activity_type=activity_type,
+            description=assignment_description,
+            actor=activity_actor,
+        )
+
     try:
         database.commit()
         database.refresh(case)
@@ -262,7 +370,9 @@ def update_case(
 
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="A case with this case number already exists.",
+            detail=(
+                "A case with this case number already exists."
+            ),
         )
 
     return case

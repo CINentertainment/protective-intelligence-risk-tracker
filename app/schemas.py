@@ -77,6 +77,16 @@ class CaseBase(BaseModel):
     opened_date: date = Field(default_factory=date.today)
     next_review_date: date | None = None
 
+    assigned_analyst: str | None = Field(
+        default=None,
+        max_length=150,
+    )
+
+    responsible_team: str | None = Field(
+        default=None,
+        max_length=150,
+    )
+
 
 class CaseCreate(CaseBase):
     pass
@@ -106,6 +116,16 @@ class CaseUpdate(BaseModel):
     opened_date: date | None = None
     next_review_date: date | None = None
 
+    assigned_analyst: str | None = Field(
+        default=None,
+        max_length=150,
+    )
+
+    responsible_team: str | None = Field(
+        default=None,
+        max_length=150,
+    )
+
 
 class CaseResponse(CaseBase):
     model_config = ConfigDict(from_attributes=True)
@@ -113,6 +133,7 @@ class CaseResponse(CaseBase):
     id: int
     is_archived: bool
     archived_at: datetime | None
+    assigned_at: datetime | None
     created_at: datetime
     updated_at: datetime
 

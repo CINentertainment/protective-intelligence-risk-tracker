@@ -973,3 +973,214 @@ def test_restore_missing_case():
     assert response.json() == {
         "detail": "Case not found."
     }
+
+def test_create_case_with_assignment():
+    case_data = sample_case()
+    case_data["assigned_analyst"] = "Jordan Lee"
+    case_data["responsible_team"] = (
+        "Protective Intelligence Unit"
+    )
+
+    response = client.post(
+        "/cases",
+        json=case_data,
+    )
+
+    assert response.status_code == 201
+
+    created_case = response.json()
+
+    assert created_case["assigned_analyst"] == "Jordan Lee"
+    assert (
+        created_case["responsible_team"]
+        == "Protective Intelligence Unit"
+    )
+    assert created_case["assigned_at"] is not None
+
+
+def test_case_assignment_records_activity():
+    case_data = sample_case()
+    case_data["assigned_analyst"] = "Jordan Lee"
+    case_data["responsible_team"] = (
+        "Protective Intelligence Unit"
+    )
+
+    create_response = client.post(
+        "/cases",
+        json=case_data,
+    )
+
+    assert create_response.status_code == 201
+
+    case_id = create_response.json()["id"]
+
+    activity_response = client.get(
+        f"/cases/{case_id}/activities"
+    )
+
+    assert activity_response.status_code == 200
+
+    activities = activity_response.json()
+    activity_types = [
+        activity["activity_type"]
+        for activity in activities
+    ]
+
+    assert "case_created" in activity_types
+    assert "case_assigned" in activity_types
+
+    assignment_activity = next(
+        activity
+        for activity in activities
+        if activity["activity_type"] == "case_assigned"
+    )
+
+    assert "Jordan Lee" in assignment_activity["description"]
+    assert (
+        "Protective Intelligence Unit"
+        in assignment_activity["description"]
+    )
+    assert assignment_activity["actor"] == "Jordan Lee"
+
+
+def test_update_case_assignment():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    response = client.patch(
+        f"/cases/{case_id}",
+        json={
+            "assigned_analyst": "Morgan Reyes",
+            "responsible_team": "Threat Management Team",
+        },
+    )
+
+    assert response.status_code == 200
+
+    updated_case = response.json()
+
+    assert (
+        updated_case["assigned_analyst"]
+        == "Morgan Reyes"
+    )
+    assert (
+        updated_case["responsible_team"]
+        == "Threat Management Team"
+    )
+    assert updated_case["assigned_at"] is not None
+
+    activity_types = get_activity_types(case_id)
+
+    assert "case_updated" in activity_types
+    assert "case_assigned" in activity_types
+
+
+def test_reassign_case_records_activity():
+    case_data = sample_case()
+    case_data["assigned_analyst"] = "Jordan Lee"
+    case_data["responsible_team"] = (
+        "Protective Intelligence Unit"
+    )
+
+    create_response = client.post(
+        "/cases",
+        json=case_data,
+    )
+
+    assert create_response.status_code == 201
+
+    case_id = create_response.json()["id"]
+
+    update_response = client.patch(
+        f"/cases/{case_id}",
+        json={
+            "assigned_analyst": "Morgan Reyes",
+            "responsible_team": "Threat Management Team",
+        },
+    )
+
+    assert update_response.status_code == 200
+
+    updated_case = update_response.json()
+
+    assert (
+        updated_case["assigned_analyst"]
+        == "Morgan Reyes"
+    )
+    assert (
+        updated_case["responsible_team"]
+        == "Threat Management Team"
+    )
+
+    activities_response = client.get(
+        f"/cases/{case_id}/activities"
+    )
+
+    assert activities_response.status_code == 200
+
+    activities = activities_response.json()
+
+    reassignment_activity = next(
+        activity
+        for activity in activities
+        if activity["activity_type"] == "case_reassigned"
+    )
+
+    assert "Morgan Reyes" in (
+        reassignment_activity["description"]
+    )
+    assert "Threat Management Team" in (
+        reassignment_activity["description"]
+    )
+    assert reassignment_activity["actor"] == "Morgan Reyes"
+
+
+def test_clear_case_assignment():
+    case_data = sample_case()
+    case_data["assigned_analyst"] = "Jordan Lee"
+    case_data["responsible_team"] = (
+        "Protective Intelligence Unit"
+    )
+
+    create_response = client.post(
+        "/cases",
+        json=case_data,
+    )
+
+    assert create_response.status_code == 201
+
+    case_id = create_response.json()["id"]
+
+    clear_response = client.patch(
+        f"/cases/{case_id}",
+        json={
+            "assigned_analyst": None,
+            "responsible_team": None,
+        },
+    )
+
+    assert clear_response.status_code == 200
+
+    cleared_case = clear_response.json()
+
+    assert cleared_case["assigned_analyst"] is None
+    assert cleared_case["responsible_team"] is None
+    assert cleared_case["assigned_at"] is None
+
+    activity_types = get_activity_types(case_id)
+
+    assert "case_unassigned" in activity_types
+
+
+def test_assignment_fields_enforce_maximum_length():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    response = client.patch(
+        f"/cases/{case_id}",
+        json={
+            "assigned_analyst": "A" * 151,
+        },
+    )
+
+    assert response.status_code == 422

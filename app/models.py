@@ -10,7 +10,11 @@ from sqlalchemy import (
     Text,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from app.database import Base
 
@@ -70,6 +74,23 @@ class Case(Base):
         nullable=True,
     )
 
+    assigned_analyst: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+        index=True,
+    )
+
+    responsible_team: Mapped[str | None] = mapped_column(
+        String(150),
+        nullable=True,
+        index=True,
+    )
+
+    assigned_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+
     is_archived: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
@@ -101,17 +122,23 @@ class Case(Base):
         cascade="all, delete-orphan",
     )
 
-    assessments: Mapped[list["RiskAssessment"]] = relationship(
+    assessments: Mapped[
+        list["RiskAssessment"]
+    ] = relationship(
         back_populates="case",
         cascade="all, delete-orphan",
     )
 
-    mitigation_actions: Mapped[list["MitigationAction"]] = relationship(
+    mitigation_actions: Mapped[
+        list["MitigationAction"]
+    ] = relationship(
         back_populates="case",
         cascade="all, delete-orphan",
     )
 
-    activities: Mapped[list["CaseActivity"]] = relationship(
+    activities: Mapped[
+        list["CaseActivity"]
+    ] = relationship(
         back_populates="case",
         cascade="all, delete-orphan",
         order_by="CaseActivity.created_at.desc()",
@@ -128,7 +155,10 @@ class Indicator(Base):
     )
 
     case_id: Mapped[int] = mapped_column(
-        ForeignKey("cases.id", ondelete="CASCADE"),
+        ForeignKey(
+            "cases.id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         index=True,
     )
@@ -181,7 +211,10 @@ class RiskAssessment(Base):
     )
 
     case_id: Mapped[int] = mapped_column(
-        ForeignKey("cases.id", ondelete="CASCADE"),
+        ForeignKey(
+            "cases.id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         index=True,
     )
@@ -211,12 +244,16 @@ class RiskAssessment(Base):
         nullable=False,
     )
 
-    recommended_action: Mapped[str | None] = mapped_column(
+    recommended_action: Mapped[
+        str | None
+    ] = mapped_column(
         Text,
         nullable=True,
     )
 
-    assessed_by: Mapped[str | None] = mapped_column(
+    assessed_by: Mapped[
+        str | None
+    ] = mapped_column(
         String(150),
         nullable=True,
     )
@@ -248,7 +285,10 @@ class MitigationAction(Base):
     )
 
     case_id: Mapped[int] = mapped_column(
-        ForeignKey("cases.id", ondelete="CASCADE"),
+        ForeignKey(
+            "cases.id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         index=True,
     )
@@ -280,12 +320,16 @@ class MitigationAction(Base):
         default="Planned",
     )
 
-    due_date: Mapped[date | None] = mapped_column(
+    due_date: Mapped[
+        date | None
+    ] = mapped_column(
         Date,
         nullable=True,
     )
 
-    completed_date: Mapped[date | None] = mapped_column(
+    completed_date: Mapped[
+        date | None
+    ] = mapped_column(
         Date,
         nullable=True,
     )
@@ -318,7 +362,10 @@ class CaseActivity(Base):
     )
 
     case_id: Mapped[int] = mapped_column(
-        ForeignKey("cases.id", ondelete="CASCADE"),
+        ForeignKey(
+            "cases.id",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         index=True,
     )
