@@ -50,6 +50,7 @@ analystFilter: document.getElementById(
 teamFilter: document.getElementById(
     "teamFilter"
 ),
+reviewFilter: document.getElementById("reviewFilter"),
 
 sortSelect: null,
     caseList: document.getElementById("caseList"),
@@ -584,6 +585,13 @@ function filteredCases() {
         .trim()
         .toLowerCase();
 
+        const reviewFilter = elements.reviewFilter.value;
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const dueSoonCutoff = new Date(today);
+dueSoonCutoff.setDate(dueSoonCutoff.getDate() + 7);
+
     const selectedStatus =
         elements.statusFilter.value;
 
@@ -599,59 +607,84 @@ function filteredCases() {
         .toLowerCase();
 
     return state.cases
-        .filter((caseItem) => {
-            const matchesStatus =
-                !selectedStatus ||
-                caseItem.status === selectedStatus;
+    .filter((caseItem) => {
+        const matchesStatus =
+            !selectedStatus ||
+            caseItem.status === selectedStatus;
 
-            const searchableText = [
-                caseItem.case_number,
-                caseItem.title,
-                caseItem.summary,
-                caseItem.assigned_analyst,
-                caseItem.responsible_team,
-            ]
-                .join(" ")
-                .toLowerCase();
+        const searchableText = [
+            caseItem.case_number,
+            caseItem.title,
+            caseItem.summary,
+            caseItem.assigned_analyst,
+            caseItem.responsible_team,
+        ]
+            .join(" ")
+            .toLowerCase();
 
-            const matchesSearch =
-                !searchTerm ||
-                searchableText.includes(searchTerm);
+        const matchesSearch =
+            !searchTerm ||
+            searchableText.includes(searchTerm);
 
-            const matchesArchiveView =
-                archiveView === "all" ||
-                (
-                    archiveView === "archived" &&
-                    caseItem.is_archived
-                ) ||
-                (
-                    archiveView === "active" &&
-                    !caseItem.is_archived
-                );
-
-            const matchesAnalyst =
-                !analystTerm ||
-                String(caseItem.assigned_analyst || "")
-                    .toLowerCase()
-                    .includes(analystTerm);
-
-            const matchesTeam =
-                !teamTerm ||
-                String(caseItem.responsible_team || "")
-                    .toLowerCase()
-                    .includes(teamTerm);
-
-            return (
-                matchesStatus &&
-                matchesSearch &&
-                matchesArchiveView &&
-                matchesAnalyst &&
-                matchesTeam
+        const matchesArchiveView =
+            archiveView === "all" ||
+            (
+                archiveView === "archived" &&
+                caseItem.is_archived
+            ) ||
+            (
+                archiveView === "active" &&
+                !caseItem.is_archived
             );
-        })
-        .sort(compareCases);
-}
 
+        const matchesAnalyst =
+            !analystTerm ||
+            String(caseItem.assigned_analyst || "")
+                .toLowerCase()
+                .includes(analystTerm);
+
+        const matchesTeam =
+            !teamTerm ||
+            String(caseItem.responsible_team || "")
+                .toLowerCase()
+                .includes(teamTerm);
+
+        const reviewDate = caseItem.next_review_date
+            ? new Date(
+                `${caseItem.next_review_date}T00:00:00`
+            )
+            : null;
+
+        let matchesReview = true;
+
+        if (reviewFilter === "missing") {
+            matchesReview = reviewDate === null;
+        } else if (reviewFilter === "overdue") {
+            matchesReview =
+                reviewDate !== null &&
+                reviewDate < today;
+        } else if (reviewFilter === "due-soon") {
+            matchesReview =
+                reviewDate !== null &&
+                reviewDate >= today &&
+                reviewDate <= dueSoonCutoff;
+        } else if (reviewFilter === "scheduled") {
+            matchesReview =
+                reviewDate !== null &&
+                reviewDate > dueSoonCutoff;
+        }
+
+        return (
+            matchesStatus &&
+            matchesSearch &&
+            matchesArchiveView &&
+            matchesAnalyst &&
+            matchesTeam &&
+            matchesReview
+        );
+    })
+    .sort(compareCases);
+}
 
 function updateCaseRegisterTitle() {
     const titles = {
@@ -2186,6 +2219,10 @@ elements.statusFilter.addEventListener(
     renderCases
 );
 
+elements.reviewFilter.addEventListener(
+    "change",
+    renderCases
+);
 
 elements.archiveFilter.addEventListener(
     "change",
