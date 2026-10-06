@@ -159,6 +159,33 @@
                     </label>
 
                     <input id="nextReviewDate" type="date">
+                    <div class="form-grid two-column">
+    <div>
+        <label for="assignedAnalyst">
+            Assigned Analyst
+        </label>
+
+        <input
+            id="assignedAnalyst"
+            type="text"
+            maxlength="150"
+            placeholder="Analyst name or position"
+        >
+    </div>
+
+    <div>
+        <label for="responsibleTeam">
+            Responsible Team
+        </label>
+
+        <input
+            id="responsibleTeam"
+            type="text"
+            maxlength="150"
+            placeholder="Unit, office, or team"
+        >
+    </div>
+</div>
 
                     <div class="button-row">
                         <button
@@ -196,37 +223,50 @@
                 </div>
 
                 <div class="filter-row">
-                    <input
-                        id="searchInput"
-                        type="search"
-                        placeholder="Search case number, title, or summary"
-                    >
+    <input
+        id="searchInput"
+        type="search"
+        placeholder="Search case number, title, or summary"
+    >
 
-                    <select id="statusFilter">
-                        <option value="">All statuses</option>
-                        <option value="Open">Open</option>
-                        <option value="Monitoring">
-                            Monitoring
-                        </option>
-                        <option value="Mitigated">
-                            Mitigated
-                        </option>
-                        <option value="Closed">Closed</option>
-                    </select>
-                    <select id="archiveFilter">
-    <option value="active">
-        Active cases
-    </option>
+    <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="Open">Open</option>
+        <option value="Monitoring">
+            Monitoring
+        </option>
+        <option value="Mitigated">
+            Mitigated
+        </option>
+        <option value="Closed">Closed</option>
+    </select>
 
-    <option value="archived">
-        Archived cases
-    </option>
+    <select id="archiveFilter">
+        <option value="active">
+            Active cases
+        </option>
 
-    <option value="all">
-        All cases
-    </option>
-</select>
-                </div>
+        <option value="archived">
+            Archived cases
+        </option>
+
+        <option value="all">
+            All cases
+        </option>
+    </select>
+
+    <input
+        id="analystFilter"
+        type="search"
+        placeholder="Filter by analyst"
+    >
+
+    <input
+        id="teamFilter"
+        type="search"
+        placeholder="Filter by team"
+    >
+</div>
 
                 <div id="caseList" class="case-list">
                     <p class="empty-state">

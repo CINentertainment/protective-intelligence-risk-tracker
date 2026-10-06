@@ -21,8 +21,17 @@ const elements = {
     casePriority: document.getElementById("casePriority"),
     caseRiskLevel: document.getElementById("caseRiskLevel"),
     openedDate: document.getElementById("openedDate"),
-    nextReviewDate: document.getElementById("nextReviewDate"),
-    cancelEditButton: document.getElementById(
+nextReviewDate: document.getElementById("nextReviewDate"),
+
+assignedAnalyst: document.getElementById(
+    "assignedAnalyst"
+),
+
+responsibleTeam: document.getElementById(
+    "responsibleTeam"
+),
+
+cancelEditButton: document.getElementById(
         "cancelEditButton"
     ),
 
@@ -31,9 +40,18 @@ const elements = {
         "caseRegisterTitle"
     ),
     searchInput: document.getElementById("searchInput"),
-    statusFilter: document.getElementById("statusFilter"),
-    archiveFilter: document.getElementById("archiveFilter"),
-    sortSelect: null,
+statusFilter: document.getElementById("statusFilter"),
+archiveFilter: document.getElementById("archiveFilter"),
+
+analystFilter: document.getElementById(
+    "analystFilter"
+),
+
+teamFilter: document.getElementById(
+    "teamFilter"
+),
+
+sortSelect: null,
     caseList: document.getElementById("caseList"),
 
     analysisWorkspace: document.getElementById(
@@ -572,6 +590,14 @@ function filteredCases() {
     const archiveView =
         elements.archiveFilter.value;
 
+    const analystTerm = elements.analystFilter.value
+        .trim()
+        .toLowerCase();
+
+    const teamTerm = elements.teamFilter.value
+        .trim()
+        .toLowerCase();
+
     return state.cases
         .filter((caseItem) => {
             const matchesStatus =
@@ -582,6 +608,8 @@ function filteredCases() {
                 caseItem.case_number,
                 caseItem.title,
                 caseItem.summary,
+                caseItem.assigned_analyst,
+                caseItem.responsible_team,
             ]
                 .join(" ")
                 .toLowerCase();
@@ -601,10 +629,24 @@ function filteredCases() {
                     !caseItem.is_archived
                 );
 
+            const matchesAnalyst =
+                !analystTerm ||
+                String(caseItem.assigned_analyst || "")
+                    .toLowerCase()
+                    .includes(analystTerm);
+
+            const matchesTeam =
+                !teamTerm ||
+                String(caseItem.responsible_team || "")
+                    .toLowerCase()
+                    .includes(teamTerm);
+
             return (
                 matchesStatus &&
                 matchesSearch &&
-                matchesArchiveView
+                matchesArchiveView &&
+                matchesAnalyst &&
+                matchesTeam
             );
         })
         .sort(compareCases);
@@ -787,8 +829,24 @@ function renderCases() {
                         </span>
 
                         <span>
-                            Record ID: ${caseItem.id}
-                        </span>
+    Record ID: ${caseItem.id}
+</span>
+
+<span>
+    Analyst:
+    ${escapeHtml(
+        caseItem.assigned_analyst ||
+        "Unassigned"
+    )}
+</span>
+
+<span>
+    Team:
+    ${escapeHtml(
+        caseItem.responsible_team ||
+        "Unassigned"
+    )}
+</span>
                     </div>
 
                     <div class="case-actions">
@@ -880,15 +938,40 @@ function renderSelectedCase() {
                 </span>
 
                 <span>
-                    Next review:
-                    ${formatDate(
-                        caseItem.next_review_date
-                    )}
-                </span>
+    Next review:
+    ${formatDate(
+        caseItem.next_review_date
+    )}
+</span>
 
-                <span>
-                    Indicators: ${indicators.length}
-                </span>
+<span>
+    Assigned analyst:
+    ${escapeHtml(
+        caseItem.assigned_analyst ||
+        "Unassigned"
+    )}
+</span>
+
+<span>
+    Responsible team:
+    ${escapeHtml(
+        caseItem.responsible_team ||
+        "Unassigned"
+    )}
+</span>
+
+<span>
+    Assigned:
+    ${caseItem.assigned_at
+        ? formatDateTime(
+            caseItem.assigned_at
+        )
+        : "Not assigned"}
+</span>
+
+<span>
+    Indicators: ${indicators.length}
+</span>
 
                 <span>
                     Assessments: ${assessments.length}
@@ -1533,9 +1616,15 @@ function beginCaseEdit(caseId) {
         caseItem.opened_date;
 
     elements.nextReviewDate.value =
-        caseItem.next_review_date || "";
+    caseItem.next_review_date || "";
 
-    elements.cancelEditButton.classList.remove(
+elements.assignedAnalyst.value =
+    caseItem.assigned_analyst || "";
+
+elements.responsibleTeam.value =
+    caseItem.responsible_team || "";
+
+elements.cancelEditButton.classList.remove(
         "hidden"
     );
 
@@ -1575,8 +1664,16 @@ async function saveCase(event) {
             elements.openedDate.value,
 
         next_review_date:
-            elements.nextReviewDate.value ||
-            null,
+    elements.nextReviewDate.value ||
+    null,
+
+assigned_analyst:
+    elements.assignedAnalyst.value.trim() ||
+    null,
+
+responsible_team:
+    elements.responsibleTeam.value.trim() ||
+    null,
     };
 
     try {
@@ -2121,6 +2218,16 @@ elements.archiveFilter.addEventListener(
     }
 );
 
+elements.analystFilter.addEventListener(
+    "input",
+    renderCases
+);
+
+
+elements.teamFilter.addEventListener(
+    "input",
+    renderCases
+);
 
 createSortControl();
 
