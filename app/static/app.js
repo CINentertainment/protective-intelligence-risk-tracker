@@ -124,11 +124,37 @@ sortSelect: null,
     mitigationDueDate: document.getElementById(
         "mitigationDueDate"
     ),
-    mitigationList: document.getElementById(
-        "mitigationList"
-    ),
+   mitigationList: document.getElementById(
+    "mitigationList"
+),
 
-    activityList: document.getElementById("activityList"),
+reviewForm: document.getElementById(
+    "reviewForm"
+),
+
+reviewDate: document.getElementById(
+    "reviewDate"
+),
+
+reviewedBy: document.getElementById(
+    "reviewedBy"
+),
+
+reviewFindings: document.getElementById(
+    "reviewFindings"
+),
+
+reviewNextDate: document.getElementById(
+    "reviewNextDate"
+),
+
+reviewList: document.getElementById(
+    "reviewList"
+),
+
+activityList: document.getElementById(
+    "activityList"
+),
     toast: document.getElementById("toast"),
 };
 
@@ -926,6 +952,7 @@ function renderSelectedCase() {
 
     const mitigations =
         caseItem.mitigation_actions || [];
+    const reviews = caseItem.reviews || [];
 
     elements.selectedCaseTitle.textContent =
         `${caseItem.case_number}: ${caseItem.title}`;
@@ -1012,14 +1039,18 @@ function renderSelectedCase() {
 
                 <span>
                     Mitigations: ${mitigations.length}
+                    <span>
+                        Reviews: ${reviews.length}
+                    </span>
                 </span>
             </div>
         </div>
     `;
 
-    renderIndicators(indicators);
-    renderAssessments(assessments);
-    renderMitigations(mitigations);
+renderIndicators(indicators);
+renderAssessments(assessments);
+renderMitigations(mitigations);
+renderReviews(reviews);
 
     renderActivities(
         caseItem.activities || []
@@ -1380,13 +1411,82 @@ function renderMitigations(mitigations) {
             .join("");
 }
 
+function renderReviews(reviews) {
+    if (!reviews.length) {
+        elements.reviewList.innerHTML = `
+            <p class="empty-state">
+                No case reviews recorded.
+            </p>
+        `;
 
+        return;
+    }
+
+    elements.reviewList.innerHTML =
+        reviews
+            .map((review) => `
+                <article class="analysis-item">
+                    <div class="analysis-item-header">
+                        <div>
+                            <h3>
+                                Case Review
+                                ${formatDate(
+                                    review.review_date
+                                )}
+                            </h3>
+
+                            <span class="badge green">
+                                Completed
+                            </span>
+                        </div>
+                    </div>
+
+                    <p>
+                        <strong>Findings:</strong>
+                        <br>
+
+                        ${escapeHtml(
+                            review.findings
+                        )}
+                    </p>
+
+                    <div class="analysis-meta">
+                        <span>
+                            Reviewed by:
+                            ${escapeHtml(
+                                review.reviewed_by
+                            )}
+                        </span>
+
+                        <span>
+                            Next review:
+                            ${formatDate(
+                                review.next_review_date
+                            )}
+                        </span>
+
+                        <span>
+                            Recorded:
+                            ${formatDateTime(
+                                review.created_at
+                            )}
+                        </span>
+
+                        <span>
+                            ID: ${review.id}
+                        </span>
+                    </div>
+                </article>
+            `)
+            .join("");
+}
 function activityLabel(activityType) {
     const labels = {
         case_created: "Case Created",
         case_updated: "Case Updated",
         case_archived: "Case Archived",
         case_restored: "Case Restored",
+        case_reviewed: "Case Reviewed",
         indicator_created: "Indicator Added",
         indicator_deleted: "Indicator Deleted",
         assessment_created: "Assessment Recorded",
@@ -1545,12 +1645,20 @@ async function loadSelectedCase(
     try {
         state.selectedCaseId = Number(caseId);
 
-        state.selectedCase = await apiRequest(
-            `/cases/${state.selectedCaseId}`
-        );
+state.selectedCase = await apiRequest(
+    `/cases/${state.selectedCaseId}`
+);
 
-        renderCases();
-        renderSelectedCase();
+elements.reviewForm.reset();
+
+elements.reviewDate.value =
+    today();
+
+elements.reviewedBy.value =
+    state.selectedCase.assigned_analyst || "";
+
+renderCases();
+renderSelectedCase();
 
         if (scrollToWorkspace) {
             elements.analysisWorkspace
@@ -1841,6 +1949,64 @@ async function restoreCase(caseId) {
 
         showToast(
             "Case restored to the active register."
+        );
+    } catch (error) {
+        showToast(error.message, true);
+    }
+}
+async function saveReview(event) {
+    event.preventDefault();
+
+    if (state.selectedCaseId === null) {
+        showToast(
+            "Select a case first.",
+            true
+        );
+
+        return;
+    }
+
+    const payload = {
+        review_date:
+            elements.reviewDate.value,
+
+        reviewed_by:
+            elements.reviewedBy
+                .value
+                .trim(),
+
+        findings:
+            elements.reviewFindings
+                .value
+                .trim(),
+
+        next_review_date:
+            elements.reviewNextDate.value ||
+            null,
+    };
+
+    try {
+        await apiRequest(
+            `/cases/${state.selectedCaseId}/reviews`,
+            {
+                method: "POST",
+                body: JSON.stringify(payload),
+            }
+        );
+
+        await loadCases();
+
+        elements.reviewForm.reset();
+
+        elements.reviewDate.value =
+            today();
+
+        elements.reviewedBy.value =
+            state.selectedCase
+                ?.assigned_analyst || "";
+
+        showToast(
+            "Case review recorded."
         );
     } catch (error) {
         showToast(error.message, true);
@@ -2302,6 +2468,10 @@ elements.mitigationForm.addEventListener(
     "submit",
     saveMitigation
 );
+elements.reviewForm.addEventListener(
+    "submit",
+    saveReview
+);
 
 
 elements.caseList.addEventListener(
@@ -2428,6 +2598,9 @@ elements.indicatorObservedDate.value =
     today();
 
 elements.assessmentDate.value =
+    today();
+
+elements.reviewDate.value =
     today();
 
 loadCases();

@@ -700,6 +700,83 @@
                         </p>
                     </div>
                 </article>
+                               <article class="panel review-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <p class="eyebrow">
+                                PERIODIC REVIEW
+                            </p>
+
+                            <h2>Case Reviews</h2>
+                        </div>
+                    </div>
+
+                    <form id="reviewForm">
+                        <div class="form-grid two-column">
+                            <div>
+                                <label for="reviewDate">
+                                    Review Date
+                                </label>
+
+                                <input
+                                    id="reviewDate"
+                                    type="date"
+                                    required
+                                >
+                            </div>
+
+                            <div>
+                                <label for="reviewedBy">
+                                    Reviewed By
+                                </label>
+
+                                <input
+                                    id="reviewedBy"
+                                    type="text"
+                                    maxlength="150"
+                                    placeholder="Analyst name or position"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <label for="reviewFindings">
+                            Review Findings
+                        </label>
+
+                        <textarea
+                            id="reviewFindings"
+                            rows="5"
+                            placeholder="Summarize current findings, changes, and the recommended case posture"
+                            required
+                        ></textarea>
+
+                        <label for="reviewNextDate">
+                            Next Review Date
+                        </label>
+
+                        <input
+                            id="reviewNextDate"
+                            type="date"
+                        >
+
+                        <button
+                            class="primary-button"
+                            type="submit"
+                        >
+                            Record Case Review
+                        </button>
+                    </form>
+
+                    <div
+                        id="reviewList"
+                        class="analysis-list"
+                    >
+                        <p class="empty-state">
+                            No case reviews recorded.
+                        </p>
+                    </div>
+                </article>
 
                 <article class="panel activity-panel">
                     <div class="panel-heading">
