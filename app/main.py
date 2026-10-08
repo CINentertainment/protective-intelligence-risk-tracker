@@ -1,7 +1,13 @@
 from datetime import date, datetime
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Response, status
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Response,
+    status,
+)
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
@@ -30,7 +36,8 @@ app = FastAPI(
     title="Protective Intelligence Risk Tracker",
     description=(
         "A case-management API for tracking protective intelligence cases, "
-        "indicators, assessments, mitigation actions, and case activity."
+        "indicators, assessments, mitigation actions, case reviews, and "
+        "case activity."
     ),
     version="0.6.0",
 )
@@ -470,6 +477,89 @@ def list_case_activities(
         .order_by(
             models.CaseActivity.created_at.desc(),
             models.CaseActivity.id.desc(),
+        )
+    )
+
+    return database.scalars(statement).all()
+
+
+@app.post(
+    "/cases/{case_id}/reviews",
+    response_model=schemas.CaseReviewResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_case_review(
+    case_id: int,
+    review_data: schemas.CaseReviewCreate,
+    database: Session = Depends(get_db),
+):
+    case = get_case_or_404(case_id, database)
+
+    if (
+        review_data.next_review_date is not None
+        and review_data.next_review_date < review_data.review_date
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                "next_review_date cannot be earlier than "
+                "review_date."
+            ),
+        )
+
+    review = models.CaseReview(
+        case_id=case_id,
+        **review_data.model_dump(),
+    )
+
+    case.next_review_date = review_data.next_review_date
+
+    database.add(review)
+
+    if review_data.next_review_date is None:
+        schedule_description = (
+            "No next review date was scheduled."
+        )
+    else:
+        schedule_description = (
+            "The next review is scheduled for "
+            f"{review_data.next_review_date.isoformat()}."
+        )
+
+    record_activity(
+        database=database,
+        case_id=case_id,
+        activity_type="case_reviewed",
+        description=(
+            f"Case review completed by "
+            f"{review_data.reviewed_by}. "
+            f"{schedule_description}"
+        ),
+        actor=review_data.reviewed_by,
+    )
+
+    database.commit()
+    database.refresh(review)
+
+    return review
+
+
+@app.get(
+    "/cases/{case_id}/reviews",
+    response_model=list[schemas.CaseReviewResponse],
+)
+def list_case_reviews(
+    case_id: int,
+    database: Session = Depends(get_db),
+):
+    get_case_or_404(case_id, database)
+
+    statement = (
+        select(models.CaseReview)
+        .where(models.CaseReview.case_id == case_id)
+        .order_by(
+            models.CaseReview.review_date.desc(),
+            models.CaseReview.id.desc(),
         )
     )
 

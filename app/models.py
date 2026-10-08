@@ -144,6 +144,14 @@ class Case(Base):
         order_by="CaseActivity.created_at.desc()",
     )
 
+    reviews: Mapped[
+        list["CaseReview"]
+    ] = relationship(
+        back_populates="case",
+        cascade="all, delete-orphan",
+        order_by="CaseReview.review_date.desc()",
+    )
+
 
 class Indicator(Base):
     __tablename__ = "indicators"
@@ -395,4 +403,55 @@ class CaseActivity(Base):
 
     case: Mapped["Case"] = relationship(
         back_populates="activities",
+    )
+
+
+class CaseReview(Base):
+    __tablename__ = "case_reviews"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
+
+    case_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "cases.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    review_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+        default=date.today,
+        index=True,
+    )
+
+    reviewed_by: Mapped[str] = mapped_column(
+        String(150),
+        nullable=False,
+    )
+
+    findings: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    next_review_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    case: Mapped["Case"] = relationship(
+        back_populates="reviews",
     )

@@ -269,6 +269,33 @@ class CaseActivityResponse(BaseModel):
     created_at: datetime
 
 
+class CaseReviewBase(BaseModel):
+    review_date: date = Field(default_factory=date.today)
+
+    reviewed_by: str = Field(
+        min_length=1,
+        max_length=150,
+    )
+
+    findings: str = Field(
+        min_length=1,
+    )
+
+    next_review_date: date | None = None
+
+
+class CaseReviewCreate(CaseReviewBase):
+    pass
+
+
+class CaseReviewResponse(CaseReviewBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    case_id: int
+    created_at: datetime
+
+
 class CaseDetailResponse(CaseResponse):
     indicators: list[IndicatorResponse] = Field(
         default_factory=list
@@ -283,5 +310,9 @@ class CaseDetailResponse(CaseResponse):
     )
 
     activities: list[CaseActivityResponse] = Field(
+        default_factory=list
+    )
+
+    reviews: list[CaseReviewResponse] = Field(
         default_factory=list
     )

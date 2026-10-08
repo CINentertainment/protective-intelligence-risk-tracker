@@ -1184,3 +1184,173 @@ def test_assignment_fields_enforce_maximum_length():
     )
 
     assert response.status_code == 422
+
+def sample_case_review() -> dict:
+    return {
+        "review_date": "2026-10-08",
+        "reviewed_by": "Jordan Lee",
+        "findings": (
+            "The case remains active. Existing indicators were reviewed, "
+            "and continued monitoring is recommended."
+        ),
+        "next_review_date": "2026-10-15",
+    }
+
+
+def test_create_case_review():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    response = client.post(
+        f"/cases/{case_id}/reviews",
+        json=sample_case_review(),
+    )
+
+    assert response.status_code == 201
+
+    review = response.json()
+
+    assert review["id"] == 1
+    assert review["case_id"] == case_id
+    assert review["review_date"] == "2026-10-08"
+    assert review["reviewed_by"] == "Jordan Lee"
+    assert review["next_review_date"] == "2026-10-15"
+    assert "continued monitoring" in review["findings"]
+    assert review["created_at"] is not None
+
+
+def test_list_case_reviews():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    first_review = sample_case_review()
+
+    first_response = client.post(
+        f"/cases/{case_id}/reviews",
+        json=first_review,
+    )
+
+    assert first_response.status_code == 201
+
+    second_review = sample_case_review()
+    second_review["review_date"] = "2026-10-09"
+    second_review["reviewed_by"] = "Morgan Reyes"
+    second_review["findings"] = (
+        "New information was reviewed. The case should remain open."
+    )
+    second_review["next_review_date"] = "2026-10-20"
+
+    second_response = client.post(
+        f"/cases/{case_id}/reviews",
+        json=second_review,
+    )
+
+    assert second_response.status_code == 201
+
+    list_response = client.get(
+        f"/cases/{case_id}/reviews"
+    )
+
+    assert list_response.status_code == 200
+
+    reviews = list_response.json()
+
+    assert len(reviews) == 2
+    assert reviews[0]["reviewed_by"] == "Morgan Reyes"
+    assert reviews[0]["review_date"] == "2026-10-09"
+    assert reviews[1]["reviewed_by"] == "Jordan Lee"
+    assert reviews[1]["review_date"] == "2026-10-08"
+
+
+def test_case_review_updates_next_review_date():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    review_response = client.post(
+        f"/cases/{case_id}/reviews",
+        json=sample_case_review(),
+    )
+
+    assert review_response.status_code == 201
+
+    case_response = client.get(
+        f"/cases/{case_id}"
+    )
+
+    assert case_response.status_code == 200
+
+    case_data = case_response.json()
+
+    assert case_data["next_review_date"] == "2026-10-15"
+    assert len(case_data["reviews"]) == 1
+    assert (
+        case_data["reviews"][0]["reviewed_by"]
+        == "Jordan Lee"
+    )
+    assert (
+        case_data["reviews"][0]["next_review_date"]
+        == "2026-10-15"
+    )
+
+
+def test_case_review_records_activity():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    review_response = client.post(
+        f"/cases/{case_id}/reviews",
+        json=sample_case_review(),
+    )
+
+    assert review_response.status_code == 201
+
+    activity_response = client.get(
+        f"/cases/{case_id}/activities"
+    )
+
+    assert activity_response.status_code == 200
+
+    activities = activity_response.json()
+
+    review_activity = next(
+        activity
+        for activity in activities
+        if activity["activity_type"] == "case_reviewed"
+    )
+
+    assert review_activity["actor"] == "Jordan Lee"
+    assert "2026-10-15" in review_activity["description"]
+
+
+def test_reject_review_with_invalid_next_review_date():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    review_data = sample_case_review()
+    review_data["review_date"] = "2026-10-08"
+    review_data["next_review_date"] = "2026-10-07"
+
+    response = client.post(
+        f"/cases/{case_id}/reviews",
+        json=review_data,
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": (
+            "next_review_date cannot be earlier than "
+            "review_date."
+        ),
+    }
+
+
+def test_create_review_for_missing_case():
+    response = client.post(
+        "/cases/999/reviews",
+        json=sample_case_review(),
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Case not found.",
+    }
