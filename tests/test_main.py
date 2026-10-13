@@ -1,9 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app import models
 from app.database import Base, get_db
 from app.main import app
 
@@ -39,11 +40,14 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def reset_database():
+    client.cookies.clear()
+
     Base.metadata.drop_all(bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
 
     yield
 
+    client.cookies.clear()
     Base.metadata.drop_all(bind=test_engine)
 
 
@@ -1354,3 +1358,158 @@ def test_create_review_for_missing_case():
     assert response.json() == {
         "detail": "Case not found.",
     }
+def sample_user() -> dict:
+    return {
+        "username": "test.admin",
+        "full_name": "Test Administrator",
+        "password": "SecurePassword123!",
+        "role": "Read Only",
+    }
+
+
+def bootstrap_test_administrator() -> dict:
+    response = client.post(
+        "/auth/bootstrap",
+        json=sample_user(),
+    )
+
+    assert response.status_code == 201
+
+    return response.json()
+
+
+def login_test_administrator():
+    response = client.post(
+        "/auth/login",
+        json={
+            "username": "test.admin",
+            "password": "SecurePassword123!",
+        },
+    )
+
+    assert response.status_code == 200
+
+    return response
+
+
+def test_bootstrap_administrator():
+    response = client.post(
+        "/auth/bootstrap",
+        json=sample_user(),
+    )
+
+    assert response.status_code == 201
+
+    user = response.json()
+
+    assert user["id"] == 1
+    assert user["username"] == "test.admin"
+    assert user["full_name"] == "Test Administrator"
+    assert user["role"] == "Administrator"
+    assert user["is_active"] is True
+    assert "password" not in user
+    assert "hashed_password" not in user
+
+
+def test_bootstrap_hashes_password():
+    bootstrap_test_administrator()
+
+    with TestingSessionLocal() as database:
+        user = database.scalar(
+            select(models.User)
+        )
+
+        assert user is not None
+        assert (
+            user.hashed_password
+            != "SecurePassword123!"
+        )
+        assert user.hashed_password.startswith("$argon2")
+
+
+def test_reject_second_bootstrap():
+    bootstrap_test_administrator()
+
+    response = client.post(
+        "/auth/bootstrap",
+        json={
+            "username": "second.admin",
+            "full_name": "Second Administrator",
+            "password": "AnotherSecurePassword123!",
+            "role": "Administrator",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": (
+            "Initial administrator setup has already "
+            "been completed."
+        ),
+    }
+
+
+def test_login_sets_authentication_cookie():
+    bootstrap_test_administrator()
+
+    response = login_test_administrator()
+
+    assert response.json()["message"] == "Login successful."
+    assert (
+        response.json()["user"]["role"]
+        == "Administrator"
+    )
+    assert "pirt_access_token" in client.cookies
+
+
+def test_reject_invalid_login():
+    bootstrap_test_administrator()
+
+    response = client.post(
+        "/auth/login",
+        json={
+            "username": "test.admin",
+            "password": "WrongPassword123!",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Invalid username or password.",
+    }
+
+
+def test_get_authenticated_user():
+    bootstrap_test_administrator()
+    login_test_administrator()
+
+    response = client.get("/auth/me")
+
+    assert response.status_code == 200
+    assert response.json()["username"] == "test.admin"
+    assert response.json()["role"] == "Administrator"
+
+
+def test_authentication_required_without_cookie():
+    response = client.get("/auth/me")
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Authentication required.",
+    }
+
+
+def test_logout_clears_authentication_cookie():
+    bootstrap_test_administrator()
+    login_test_administrator()
+
+    logout_response = client.post("/auth/logout")
+
+    assert logout_response.status_code == 200
+    assert logout_response.json() == {
+        "message": "Logout successful.",
+    }
+
+    current_user_response = client.get("/auth/me")
+
+    assert current_user_response.status_code == 401

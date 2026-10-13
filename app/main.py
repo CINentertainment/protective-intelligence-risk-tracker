@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import models, reporting, schemas
+from app import auth, models, reporting, schemas
 from app.database import (
     Base,
     engine,
@@ -136,7 +136,122 @@ def case_report(
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+@app.post(
+    "/auth/bootstrap",
+    response_model=schemas.UserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def bootstrap_administrator(
+    user_data: schemas.UserCreate,
+    database: Session = Depends(get_db),
+):
+    existing_user = database.scalar(
+        select(models.User.id).limit(1)
+    )
 
+    if existing_user is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Initial administrator setup has already "
+                "been completed."
+            ),
+        )
+
+    user = models.User(
+        username=user_data.username.lower(),
+        full_name=user_data.full_name.strip(),
+        hashed_password=auth.hash_password(
+            user_data.password
+        ),
+        role="Administrator",
+        is_active=True,
+    )
+
+    database.add(user)
+
+    try:
+        database.commit()
+        database.refresh(user)
+    except IntegrityError:
+        database.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That username is already in use.",
+        )
+
+    return user
+
+
+@app.post(
+    "/auth/login",
+    response_model=schemas.AuthenticationResponse,
+)
+def login(
+    login_data: schemas.LoginRequest,
+    response: Response,
+    database: Session = Depends(get_db),
+):
+    statement = select(models.User).where(
+        models.User.username
+        == login_data.username.lower()
+    )
+
+    user = database.scalar(statement)
+
+    if (
+        user is None
+        or not user.is_active
+        or not auth.verify_password(
+            login_data.password,
+            user.hashed_password,
+        )
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password.",
+        )
+
+    access_token = auth.create_access_token(user)
+
+    response.set_cookie(
+        key=auth.AUTH_COOKIE_NAME,
+        value=access_token,
+        max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+        secure=False,
+        samesite="strict",
+        path="/",
+    )
+
+    return {
+        "message": "Login successful.",
+        "user": user,
+    }
+
+
+@app.post("/auth/logout")
+def logout(response: Response):
+    response.delete_cookie(
+        key=auth.AUTH_COOKIE_NAME,
+        path="/",
+        httponly=True,
+        secure=False,
+        samesite="strict",
+    )
+
+    return {"message": "Logout successful."}
+
+
+@app.get(
+    "/auth/me",
+    response_model=schemas.UserResponse,
+)
+def get_authenticated_user(
+    current_user: auth.CurrentUser,
+):
+    return current_user
 
 @app.post(
     "/cases",
