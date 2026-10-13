@@ -1513,3 +1513,110 @@ def test_logout_clears_authentication_cookie():
     current_user_response = client.get("/auth/me")
 
     assert current_user_response.status_code == 401
+def test_administrator_creates_user():
+    bootstrap_test_administrator()
+    login_test_administrator()
+
+    response = client.post(
+        "/users",
+        json={
+            "username": "case.analyst",
+            "full_name": "Case Analyst",
+            "password": "AnalystPassword123!",
+            "role": "Analyst",
+        },
+    )
+
+    assert response.status_code == 201
+
+    user = response.json()
+
+    assert user["username"] == "case.analyst"
+    assert user["full_name"] == "Case Analyst"
+    assert user["role"] == "Analyst"
+    assert user["is_active"] is True
+    assert "password" not in user
+    assert "hashed_password" not in user
+
+
+def test_administrator_lists_users():
+    bootstrap_test_administrator()
+    login_test_administrator()
+
+    create_response = client.post(
+        "/users",
+        json={
+            "username": "case.reviewer",
+            "full_name": "Case Reviewer",
+            "password": "ReviewerPassword123!",
+            "role": "Reviewer",
+        },
+    )
+
+    assert create_response.status_code == 201
+
+    response = client.get("/users")
+
+    assert response.status_code == 200
+
+    users = response.json()
+
+    assert len(users) == 2
+
+    usernames = {
+        user["username"]
+        for user in users
+    }
+
+    assert usernames == {
+        "test.admin",
+        "case.reviewer",
+    }
+
+
+def test_user_management_requires_authentication():
+    response = client.get("/users")
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Authentication required.",
+    }
+
+
+def test_non_administrator_cannot_manage_users():
+    bootstrap_test_administrator()
+    login_test_administrator()
+
+    create_response = client.post(
+        "/users",
+        json={
+            "username": "case.analyst",
+            "full_name": "Case Analyst",
+            "password": "AnalystPassword123!",
+            "role": "Analyst",
+        },
+    )
+
+    assert create_response.status_code == 201
+
+    client.post("/auth/logout")
+
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "username": "case.analyst",
+            "password": "AnalystPassword123!",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    response = client.get("/users")
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "detail": (
+            "You do not have permission to perform "
+            "this action."
+        ),
+    }

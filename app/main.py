@@ -252,7 +252,60 @@ def get_authenticated_user(
     current_user: auth.CurrentUser,
 ):
     return current_user
+@app.post(
+    "/users",
+    response_model=schemas.UserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_user(
+    user_data: schemas.UserCreate,
+    current_user: models.User = Depends(
+        auth.require_roles("Administrator")
+    ),
+    database: Session = Depends(get_db),
+):
+    user = models.User(
+        username=user_data.username.lower(),
+        full_name=user_data.full_name.strip(),
+        hashed_password=auth.hash_password(
+            user_data.password
+        ),
+        role=user_data.role,
+        is_active=True,
+    )
 
+    database.add(user)
+
+    try:
+        database.commit()
+        database.refresh(user)
+    except IntegrityError:
+        database.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That username is already in use.",
+        )
+
+    return user
+
+
+@app.get(
+    "/users",
+    response_model=list[schemas.UserResponse],
+)
+def list_users(
+    current_user: models.User = Depends(
+        auth.require_roles("Administrator")
+    ),
+    database: Session = Depends(get_db),
+):
+    statement = select(models.User).order_by(
+        models.User.full_name,
+        models.User.id,
+    )
+
+    return database.scalars(statement).all()
 @app.post(
     "/cases",
     response_model=schemas.CaseResponse,
