@@ -306,6 +306,87 @@ def list_users(
     )
 
     return database.scalars(statement).all()
+@app.patch(
+    "/users/{user_id}",
+    response_model=schemas.UserResponse,
+)
+def update_user(
+    user_id: int,
+    user_data: schemas.UserUpdate,
+    current_user: models.User = Depends(
+        auth.require_roles("Administrator")
+    ),
+    database: Session = Depends(get_db),
+):
+    user = database.get(models.User, user_id)
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    changes = user_data.model_dump(exclude_unset=True)
+
+    removes_administrator_access = (
+        user.role == "Administrator"
+        and user.is_active
+        and (
+            (
+                "role" in changes
+                and changes["role"] != "Administrator"
+            )
+            or changes.get("is_active") is False
+        )
+    )
+
+    if removes_administrator_access:
+        active_administrators = database.scalars(
+            select(models.User).where(
+                models.User.role == "Administrator",
+                models.User.is_active.is_(True),
+            )
+        ).all()
+
+        if len(active_administrators) <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=(
+                    "The final active administrator cannot be "
+                    "demoted or deactivated."
+                ),
+            )
+
+    if (
+        user.id == current_user.id
+        and changes.get("is_active") is False
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                "You cannot deactivate your own account."
+            ),
+        )
+
+    if "full_name" in changes:
+        user.full_name = changes["full_name"].strip()
+
+    if "role" in changes:
+        user.role = changes["role"]
+
+    if "is_active" in changes:
+        user.is_active = changes["is_active"]
+
+    if "password" in changes:
+        user.hashed_password = auth.hash_password(
+            changes["password"]
+        )
+
+    database.commit()
+    database.refresh(user)
+
+    return user
+
 @app.post(
     "/cases",
     response_model=schemas.CaseResponse,

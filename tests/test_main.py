@@ -1620,3 +1620,144 @@ def test_non_administrator_cannot_manage_users():
             "this action."
         ),
     }
+def create_test_user(
+    username: str = "case.analyst",
+    role: str = "Analyst",
+) -> dict:
+    response = client.post(
+        "/users",
+        json={
+            "username": username,
+            "full_name": "Case Analyst",
+            "password": "AnalystPassword123!",
+            "role": role,
+        },
+    )
+
+    assert response.status_code == 201
+
+    return response.json()
+
+
+def test_administrator_updates_user():
+    bootstrap_test_administrator()
+    login_test_administrator()
+
+    created_user = create_test_user()
+
+    response = client.patch(
+        f"/users/{created_user['id']}",
+        json={
+            "full_name": "Senior Case Analyst",
+            "role": "Reviewer",
+        },
+    )
+
+    assert response.status_code == 200
+
+    updated_user = response.json()
+
+    assert updated_user["full_name"] == "Senior Case Analyst"
+    assert updated_user["role"] == "Reviewer"
+    assert updated_user["is_active"] is True
+
+
+def test_deactivated_user_cannot_login():
+    bootstrap_test_administrator()
+    login_test_administrator()
+
+    created_user = create_test_user()
+
+    update_response = client.patch(
+        f"/users/{created_user['id']}",
+        json={"is_active": False},
+    )
+
+    assert update_response.status_code == 200
+    assert update_response.json()["is_active"] is False
+
+    client.post("/auth/logout")
+
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "username": "case.analyst",
+            "password": "AnalystPassword123!",
+        },
+    )
+
+    assert login_response.status_code == 401
+    assert login_response.json() == {
+        "detail": "Invalid username or password.",
+    }
+
+
+def test_administrator_resets_user_password():
+    bootstrap_test_administrator()
+    login_test_administrator()
+
+    created_user = create_test_user()
+
+    update_response = client.patch(
+        f"/users/{created_user['id']}",
+        json={
+            "password": "NewAnalystPassword123!",
+        },
+    )
+
+    assert update_response.status_code == 200
+
+    client.post("/auth/logout")
+
+    old_login_response = client.post(
+        "/auth/login",
+        json={
+            "username": "case.analyst",
+            "password": "AnalystPassword123!",
+        },
+    )
+
+    assert old_login_response.status_code == 401
+
+    new_login_response = client.post(
+        "/auth/login",
+        json={
+            "username": "case.analyst",
+            "password": "NewAnalystPassword123!",
+        },
+    )
+
+    assert new_login_response.status_code == 200
+
+
+def test_final_administrator_cannot_be_demoted():
+    administrator = bootstrap_test_administrator()
+    login_test_administrator()
+
+    response = client.patch(
+        f"/users/{administrator['id']}",
+        json={"role": "Analyst"},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": (
+            "The final active administrator cannot be "
+            "demoted or deactivated."
+        ),
+    }
+
+
+def test_update_missing_user():
+    bootstrap_test_administrator()
+    login_test_administrator()
+
+    response = client.patch(
+        "/users/999",
+        json={"role": "Reviewer"},
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "User not found.",
+    }
