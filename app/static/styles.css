@@ -1176,3 +1176,218 @@ footer {
     box-shadow:
         inset 3px 0 0 rgba(60, 230, 160, 0.58);
 }
+/* Authentication interface */
+
+.authentication-screen {
+    min-height: 100vh;
+    padding: 32px 20px;
+
+    display: grid;
+    place-items: center;
+
+    background:
+        radial-gradient(
+            circle at top right,
+            rgba(37, 200, 237, 0.12),
+            transparent 38%
+        ),
+        radial-gradient(
+            circle at bottom left,
+            rgba(72, 166, 255, 0.08),
+            transparent 38%
+        ),
+        linear-gradient(
+            180deg,
+            var(--background),
+            #071522
+        );
+}
+
+
+.authentication-card {
+    width: min(100%, 460px);
+    padding: 32px;
+
+    border: 1px solid var(--border-bright);
+    border-radius: var(--radius);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.025),
+            transparent 45%
+        ),
+        var(--panel);
+
+    box-shadow:
+        0 24px 70px rgba(0, 0, 0, 0.42),
+        0 0 45px rgba(37, 200, 237, 0.05);
+}
+
+
+.authentication-brand {
+    margin-bottom: 28px;
+    padding-bottom: 23px;
+
+    border-bottom: 1px solid var(--border);
+}
+
+
+.authentication-brand h1 {
+    margin-bottom: 9px;
+    font-size: clamp(1.65rem, 5vw, 2.15rem);
+}
+
+
+.authentication-card h2 {
+    margin-bottom: 8px;
+}
+
+
+.authentication-instructions {
+    margin-bottom: 18px;
+
+    color: var(--muted);
+
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+
+.authentication-card form {
+    gap: 10px;
+}
+
+
+.authentication-card .primary-button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 11px 15px;
+}
+
+
+.text-button {
+    width: 100%;
+    margin-top: 16px;
+    padding: 8px;
+
+    border: 0;
+    background: transparent;
+    color: var(--cyan);
+
+    font-size: 0.76rem;
+    font-weight: 750;
+    text-align: center;
+}
+
+
+.text-button:hover {
+    color: #7be5f8;
+    text-decoration: underline;
+}
+
+
+.authentication-message {
+    margin: 18px 0 0;
+    padding: 11px 13px;
+
+    border: 1px solid rgba(255, 100, 124, 0.5);
+    border-radius: 8px;
+
+    background: rgba(255, 100, 124, 0.09);
+    color: #ffc0cb;
+
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+
+.authentication-message.success {
+    border-color: rgba(60, 230, 160, 0.45);
+    background: rgba(60, 230, 160, 0.08);
+    color: #bff8dc;
+}
+
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+
+.current-user {
+    min-width: max-content;
+    padding: 8px 9px 8px 13px;
+
+    display: flex;
+    align-items: center;
+    gap: 13px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: rgba(13, 29, 47, 0.72);
+}
+
+
+.current-user > div {
+    display: grid;
+    gap: 2px;
+}
+
+
+.current-user strong {
+    color: var(--text);
+
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+
+.current-user span {
+    color: var(--muted);
+
+    font-size: 0.65rem;
+    line-height: 1.2;
+}
+
+
+.current-user .secondary-button {
+    padding: 7px 10px;
+    font-size: 0.7rem;
+}
+
+
+#applicationShell {
+    min-height: 100vh;
+}
+
+
+@media (max-width: 760px) {
+    .header-actions {
+        width: 100%;
+
+        align-items: flex-start;
+        justify-content: flex-start;
+        flex-direction: column;
+    }
+
+    .current-user {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+
+@media (max-width: 500px) {
+    .authentication-screen {
+        padding: 18px 13px;
+    }
+
+    .authentication-card {
+        padding: 23px 18px;
+    }
+}

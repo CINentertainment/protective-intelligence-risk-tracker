@@ -12,6 +12,154 @@
 </head>
 
 <body>
+        <section id="authenticationScreen" class="authentication-screen">
+        <article class="authentication-card">
+            <div class="authentication-brand">
+                <p class="eyebrow">CIN ENTERTAINMENT</p>
+                <h1>Protective Intelligence Risk Tracker</h1>
+
+                <p class="subtitle">
+                    Authorized personnel only
+                </p>
+            </div>
+
+            <div id="loginPanel">
+                <h2>Sign In</h2>
+
+                <p class="authentication-instructions">
+                    Enter your account credentials to continue.
+                </p>
+
+                <form id="loginForm">
+                    <label for="loginUsername">
+                        Username
+                    </label>
+
+                    <input
+                        id="loginUsername"
+                        type="text"
+                        maxlength="100"
+                        autocomplete="username"
+                        required
+                    >
+
+                    <label for="loginPassword">
+                        Password
+                    </label>
+
+                    <input
+                        id="loginPassword"
+                        type="password"
+                        minlength="12"
+                        maxlength="128"
+                        autocomplete="current-password"
+                        required
+                    >
+
+                    <button
+                        class="primary-button"
+                        type="submit"
+                    >
+                        Sign In
+                    </button>
+                </form>
+
+                <button
+                    id="showBootstrapButton"
+                    class="text-button"
+                    type="button"
+                >
+                    Set up the first administrator
+                </button>
+            </div>
+
+            <div id="bootstrapPanel" class="hidden">
+                <h2>Administrator Setup</h2>
+
+                <p class="authentication-instructions">
+                    Create the first administrator account. This option
+                    is only available before any user accounts exist.
+                </p>
+
+                <form id="bootstrapForm">
+                    <label for="bootstrapUsername">
+                        Username
+                    </label>
+
+                    <input
+                        id="bootstrapUsername"
+                        type="text"
+                        minlength="3"
+                        maxlength="100"
+                        autocomplete="username"
+                        required
+                    >
+
+                    <label for="bootstrapFullName">
+                        Full Name
+                    </label>
+
+                    <input
+                        id="bootstrapFullName"
+                        type="text"
+                        minlength="1"
+                        maxlength="150"
+                        autocomplete="name"
+                        required
+                    >
+
+                    <label for="bootstrapPassword">
+                        Password
+                    </label>
+
+                    <input
+                        id="bootstrapPassword"
+                        type="password"
+                        minlength="12"
+                        maxlength="128"
+                        autocomplete="new-password"
+                        required
+                    >
+
+                    <label for="bootstrapPasswordConfirmation">
+                        Confirm Password
+                    </label>
+
+                    <input
+                        id="bootstrapPasswordConfirmation"
+                        type="password"
+                        minlength="12"
+                        maxlength="128"
+                        autocomplete="new-password"
+                        required
+                    >
+
+                    <button
+                        class="primary-button"
+                        type="submit"
+                    >
+                        Create Administrator
+                    </button>
+                </form>
+
+                <button
+                    id="showLoginButton"
+                    class="text-button"
+                    type="button"
+                >
+                    Return to sign in
+                </button>
+            </div>
+
+            <p
+                id="authenticationMessage"
+                class="authentication-message hidden"
+                role="alert"
+            ></p>
+        </article>
+    </section>
+
+    <div id="applicationShell" class="hidden">
     <header class="site-header">
         <div class="header-content">
             <div>
@@ -24,9 +172,31 @@
                 </p>
             </div>
 
-            <div class="system-status">
-                <span class="status-light"></span>
-                System Operational
+                        <div class="header-actions">
+                <div class="system-status">
+                    <span class="status-light"></span>
+                    System Operational
+                </div>
+
+                <div class="current-user">
+                    <div>
+                        <strong id="currentUserName">
+                            Authenticated User
+                        </strong>
+
+                        <span id="currentUserRole">
+                            User
+                        </span>
+                    </div>
+
+                    <button
+                        id="logoutButton"
+                        class="secondary-button"
+                        type="button"
+                    >
+                        Sign Out
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -802,7 +972,7 @@
     <footer>
         Protective Intelligence Risk Tracker · Version 0.6.0
     </footer>
-
+</div>
     <div
         id="toast"
         class="toast hidden"

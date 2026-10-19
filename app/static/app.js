@@ -2,10 +2,63 @@ const state = {
     cases: [],
     selectedCaseId: null,
     selectedCase: null,
+    currentUser: null,
     sortBy: "review-urgency",
 };
 
 const elements = {
+        authenticationScreen: document.getElementById(
+        "authenticationScreen"
+    ),
+    applicationShell: document.getElementById(
+        "applicationShell"
+    ),
+    loginPanel: document.getElementById("loginPanel"),
+    bootstrapPanel: document.getElementById(
+        "bootstrapPanel"
+    ),
+    loginForm: document.getElementById("loginForm"),
+    loginUsername: document.getElementById(
+        "loginUsername"
+    ),
+    loginPassword: document.getElementById(
+        "loginPassword"
+    ),
+    bootstrapForm: document.getElementById(
+        "bootstrapForm"
+    ),
+    bootstrapUsername: document.getElementById(
+        "bootstrapUsername"
+    ),
+    bootstrapFullName: document.getElementById(
+        "bootstrapFullName"
+    ),
+    bootstrapPassword: document.getElementById(
+        "bootstrapPassword"
+    ),
+    bootstrapPasswordConfirmation:
+        document.getElementById(
+            "bootstrapPasswordConfirmation"
+        ),
+    showBootstrapButton: document.getElementById(
+        "showBootstrapButton"
+    ),
+    showLoginButton: document.getElementById(
+        "showLoginButton"
+    ),
+    authenticationMessage: document.getElementById(
+        "authenticationMessage"
+    ),
+    currentUserName: document.getElementById(
+        "currentUserName"
+    ),
+    currentUserRole: document.getElementById(
+        "currentUserRole"
+    ),
+    logoutButton: document.getElementById(
+        "logoutButton"
+    ),
+
     totalCases: document.getElementById("totalCases"),
     openCases: document.getElementById("openCases"),
     elevatedCases: document.getElementById("elevatedCases"),
@@ -538,12 +591,247 @@ async function apiRequest(url, options = {}) {
             }
         }
 
-        throw new Error(message);
+                const error = new Error(message);
+        error.status = response.status;
+        throw error;
     }
 
     return data;
 }
 
+function showAuthenticationMessage(
+    message,
+    isSuccess = false
+) {
+    elements.authenticationMessage.textContent =
+        message;
+
+    elements.authenticationMessage.classList.remove(
+        "hidden",
+        "success"
+    );
+
+    if (isSuccess) {
+        elements.authenticationMessage.classList.add(
+            "success"
+        );
+    }
+}
+
+
+function clearAuthenticationMessage() {
+    elements.authenticationMessage.textContent = "";
+
+    elements.authenticationMessage.classList.add(
+        "hidden"
+    );
+
+    elements.authenticationMessage.classList.remove(
+        "success"
+    );
+}
+
+
+function showLoginPanel() {
+    clearAuthenticationMessage();
+
+    elements.bootstrapPanel.classList.add("hidden");
+    elements.loginPanel.classList.remove("hidden");
+    elements.loginPassword.value = "";
+    elements.loginUsername.focus();
+}
+
+
+function showBootstrapPanel() {
+    clearAuthenticationMessage();
+
+    elements.loginPanel.classList.add("hidden");
+    elements.bootstrapPanel.classList.remove("hidden");
+    elements.bootstrapUsername.focus();
+}
+
+
+function showAuthenticationScreen() {
+    state.currentUser = null;
+
+    elements.applicationShell.classList.add("hidden");
+
+    elements.authenticationScreen.classList.remove(
+        "hidden"
+    );
+
+    showLoginPanel();
+}
+
+
+async function showApplication(user) {
+    state.currentUser = user;
+
+    elements.currentUserName.textContent =
+        user.full_name;
+
+    elements.currentUserRole.textContent =
+        user.role;
+
+    elements.authenticationScreen.classList.add(
+        "hidden"
+    );
+
+    elements.applicationShell.classList.remove(
+        "hidden"
+    );
+
+    await loadCases();
+}
+
+
+async function submitLogin(event) {
+    event.preventDefault();
+    clearAuthenticationMessage();
+
+    const submitButton =
+        elements.loginForm.querySelector(
+            'button[type="submit"]'
+        );
+
+    submitButton.disabled = true;
+    submitButton.textContent = "Signing In...";
+
+    try {
+        const authentication = await apiRequest(
+            "/auth/login",
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    username:
+                        elements.loginUsername.value.trim(),
+                    password:
+                        elements.loginPassword.value,
+                }),
+            }
+        );
+
+        elements.loginForm.reset();
+
+        const user =
+            authentication.user || authentication;
+
+        await showApplication(user);
+    } catch (error) {
+        showAuthenticationMessage(error.message);
+        elements.loginPassword.select();
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Sign In";
+    }
+}
+
+
+async function submitBootstrap(event) {
+    event.preventDefault();
+    clearAuthenticationMessage();
+
+    const password =
+        elements.bootstrapPassword.value;
+
+    const confirmation =
+        elements.bootstrapPasswordConfirmation.value;
+
+    if (password !== confirmation) {
+        showAuthenticationMessage(
+            "The passwords do not match."
+        );
+
+        elements.bootstrapPasswordConfirmation.select();
+        return;
+    }
+
+    const submitButton =
+        elements.bootstrapForm.querySelector(
+            'button[type="submit"]'
+        );
+
+    submitButton.disabled = true;
+    submitButton.textContent =
+        "Creating Administrator...";
+
+    try {
+        const username =
+            elements.bootstrapUsername.value.trim();
+
+        await apiRequest(
+            "/auth/bootstrap",
+            {
+                method: "POST",
+                body: JSON.stringify({
+                    username,
+                    full_name:
+                        elements.bootstrapFullName
+                            .value.trim(),
+                    password,
+                    role: "Administrator",
+                }),
+            }
+        );
+
+        elements.bootstrapForm.reset();
+        showLoginPanel();
+
+        elements.loginUsername.value = username;
+
+        showAuthenticationMessage(
+            "Administrator account created. Sign in to continue.",
+            true
+        );
+
+        elements.loginPassword.focus();
+    } catch (error) {
+        showAuthenticationMessage(error.message);
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent =
+            "Create Administrator";
+    }
+}
+
+
+async function logout() {
+    elements.logoutButton.disabled = true;
+
+    try {
+        await apiRequest(
+            "/auth/logout",
+            {
+                method: "POST",
+            }
+        );
+    } catch (error) {
+        console.error(error);
+    } finally {
+        state.cases = [];
+        state.selectedCaseId = null;
+        state.selectedCase = null;
+
+        elements.logoutButton.disabled = false;
+
+        showAuthenticationScreen();
+
+        showAuthenticationMessage(
+            "You have been signed out.",
+            true
+        );
+    }
+}
+
+
+async function initializeApplication() {
+    try {
+        const user = await apiRequest("/auth/me");
+        await showApplication(user);
+    } catch (error) {
+        showAuthenticationScreen();
+    }
+}
 
 let toastTimer;
 
@@ -2349,6 +2637,36 @@ async function deleteMitigation(
     }
 }
 
+elements.loginForm.addEventListener(
+    "submit",
+    submitLogin
+);
+
+
+elements.bootstrapForm.addEventListener(
+    "submit",
+    submitBootstrap
+);
+
+
+elements.showBootstrapButton.addEventListener(
+    "click",
+    showBootstrapPanel
+);
+
+
+elements.showLoginButton.addEventListener(
+    "click",
+    showLoginPanel
+);
+
+
+elements.logoutButton.addEventListener(
+    "click",
+    logout
+);
+
+
 
 elements.caseForm.addEventListener(
     "submit",
@@ -2603,4 +2921,4 @@ elements.assessmentDate.value =
 elements.reviewDate.value =
     today();
 
-loadCases();
+initializeApplication();
