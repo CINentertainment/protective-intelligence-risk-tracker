@@ -36,14 +36,56 @@ def override_get_db():
 app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
+AUTHENTICATION_TESTS = {
+    "test_bootstrap_administrator",
+    "test_bootstrap_hashes_password",
+    "test_reject_second_bootstrap",
+    "test_login_sets_authentication_cookie",
+    "test_reject_invalid_login",
+    "test_get_authenticated_user",
+    "test_authentication_required_without_cookie",
+    "test_logout_clears_authentication_cookie",
+    "test_administrator_creates_user",
+    "test_administrator_lists_users",
+    "test_user_management_requires_authentication",
+    "test_non_administrator_cannot_manage_users",
+    "test_administrator_updates_user",
+    "test_deactivated_user_cannot_login",
+    "test_administrator_resets_user_password",
+    "test_final_administrator_cannot_be_demoted",
+    "test_update_missing_user",
+}
 
 
 @pytest.fixture(autouse=True)
-def reset_database():
+def reset_database(request):
     client.cookies.clear()
 
     Base.metadata.drop_all(bind=test_engine)
     Base.metadata.create_all(bind=test_engine)
+
+    if request.node.name not in AUTHENTICATION_TESTS:
+        bootstrap_response = client.post(
+            "/auth/bootstrap",
+            json={
+                "username": "test_admin",
+                "full_name": "Test Administrator",
+                "password": "SecurePassword123!",
+                "role": "Administrator",
+            },
+        )
+
+        assert bootstrap_response.status_code == 201
+
+        login_response = client.post(
+            "/auth/login",
+            json={
+                "username": "test_admin",
+                "password": "SecurePassword123!",
+            },
+        )
+
+        assert login_response.status_code == 200
 
     yield
 
@@ -1760,4 +1802,135 @@ def test_update_missing_user():
     assert response.status_code == 404
     assert response.json() == {
         "detail": "User not found.",
+    }
+def test_case_access_requires_authentication():
+    client.cookies.clear()
+
+    response = client.get("/cases")
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Authentication required."
+    }
+def create_and_login_role(
+    username: str,
+    role: str,
+):
+    password = "SecurePassword123!"
+
+    create_response = client.post(
+        "/users",
+        json={
+            "username": username,
+            "full_name": f"{role} Test User",
+            "password": password,
+            "role": role,
+        },
+    )
+
+    assert create_response.status_code == 201
+
+    logout_response = client.post("/auth/logout")
+
+    assert logout_response.status_code == 200
+
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "username": username,
+            "password": password,
+        },
+    )
+
+    assert login_response.status_code == 200
+
+
+def test_read_only_user_can_view_but_not_create_cases():
+    create_and_login_role(
+        username="read_only_user",
+        role="Read Only",
+    )
+
+    list_response = client.get("/cases")
+
+    assert list_response.status_code == 200
+
+    create_response = client.post(
+        "/cases",
+        json=sample_case(),
+    )
+
+    assert create_response.status_code == 403
+    assert create_response.json() == {
+        "detail": (
+            "You do not have permission to perform "
+            "this action."
+        )
+    }
+
+
+def test_reviewer_can_review_but_not_edit_cases():
+    created_case = create_test_case()
+    case_id = created_case["id"]
+
+    create_and_login_role(
+        username="reviewer_user",
+        role="Reviewer",
+    )
+
+    review_response = client.post(
+        f"/cases/{case_id}/reviews",
+        json=sample_case_review(),
+    )
+
+    assert review_response.status_code == 201
+
+    update_response = client.patch(
+        f"/cases/{case_id}",
+        json={
+            "title": "Reviewer attempted update",
+        },
+    )
+
+    assert update_response.status_code == 403
+
+
+def test_analyst_can_edit_but_not_delete_cases():
+    create_and_login_role(
+        username="analyst_user",
+        role="Analyst",
+    )
+
+    create_response = client.post(
+        "/cases",
+        json=sample_case(),
+    )
+
+    assert create_response.status_code == 201
+
+    case_id = create_response.json()["id"]
+
+    update_response = client.patch(
+        f"/cases/{case_id}",
+        json={
+            "title": "Analyst-updated case",
+        },
+    )
+
+    assert update_response.status_code == 200
+    assert (
+        update_response.json()["title"]
+        == "Analyst-updated case"
+    )
+
+    delete_response = client.delete(
+        f"/cases/{case_id}"
+    )
+
+    assert delete_response.status_code == 403
+    assert delete_response.json() == {
+        "detail": (
+            "You do not have permission to perform "
+            "this action."
+        )
     }

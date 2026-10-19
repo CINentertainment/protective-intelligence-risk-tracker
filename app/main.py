@@ -47,7 +47,43 @@ app.mount(
     StaticFiles(directory=STATIC_DIR),
     name="static",
 )
+CASE_READ_ACCESS = [
+    Depends(
+        auth.require_roles(
+            "Administrator",
+            "Analyst",
+            "Reviewer",
+            "Read Only",
+        )
+    )
+]
 
+CASE_EDIT_ACCESS = [
+    Depends(
+        auth.require_roles(
+            "Administrator",
+            "Analyst",
+        )
+    )
+]
+CASE_REVIEW_ACCESS = [
+    Depends(
+        auth.require_roles(
+            "Administrator",
+            "Analyst",
+            "Reviewer",
+        )
+    )
+]
+
+
+ADMIN_ONLY_ACCESS = [
+    Depends(
+        auth.require_roles(
+            "Administrator",
+        )
+    )
+]
 
 def get_case_or_404(
     case_id: int,
@@ -120,6 +156,7 @@ def dashboard():
     "/cases/{case_id}/report",
     response_class=HTMLResponse,
     include_in_schema=False,
+    dependencies=CASE_READ_ACCESS,
 )
 def case_report(
     case_id: int,
@@ -391,6 +428,7 @@ def update_user(
     "/cases",
     response_model=schemas.CaseResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=CASE_EDIT_ACCESS,
 )
 def create_case(
     case_data: schemas.CaseCreate,
@@ -468,6 +506,7 @@ def create_case(
 @app.get(
     "/cases",
     response_model=list[schemas.CaseResponse],
+    dependencies=CASE_READ_ACCESS,
 )
 def list_cases(
     include_archived: bool = False,
@@ -488,6 +527,7 @@ def list_cases(
 @app.get(
     "/cases/{case_id}",
     response_model=schemas.CaseDetailResponse,
+    dependencies=CASE_READ_ACCESS,
 )
 def get_case(
     case_id: int,
@@ -499,6 +539,7 @@ def get_case(
 @app.patch(
     "/cases/{case_id}",
     response_model=schemas.CaseResponse,
+    dependencies=CASE_EDIT_ACCESS,
 )
 def update_case(
     case_id: int,
@@ -637,6 +678,7 @@ def update_case(
 @app.patch(
     "/cases/{case_id}/archive",
     response_model=schemas.CaseResponse,
+    dependencies=CASE_EDIT_ACCESS,
 )
 def archive_case(
     case_id: int,
@@ -667,6 +709,7 @@ def archive_case(
 @app.patch(
     "/cases/{case_id}/restore",
     response_model=schemas.CaseResponse,
+    dependencies=CASE_EDIT_ACCESS,
 )
 def restore_case(
     case_id: int,
@@ -697,6 +740,7 @@ def restore_case(
 @app.delete(
     "/cases/{case_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=ADMIN_ONLY_ACCESS,
 )
 def delete_case(
     case_id: int,
@@ -713,6 +757,7 @@ def delete_case(
 @app.get(
     "/cases/{case_id}/activities",
     response_model=list[schemas.CaseActivityResponse],
+    dependencies=CASE_READ_ACCESS,
 )
 def list_case_activities(
     case_id: int,
@@ -736,6 +781,7 @@ def list_case_activities(
     "/cases/{case_id}/reviews",
     response_model=schemas.CaseReviewResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=CASE_REVIEW_ACCESS,
 )
 def create_case_review(
     case_id: int,
@@ -796,6 +842,7 @@ def create_case_review(
 @app.get(
     "/cases/{case_id}/reviews",
     response_model=list[schemas.CaseReviewResponse],
+    dependencies=CASE_READ_ACCESS,
 )
 def list_case_reviews(
     case_id: int,
@@ -819,6 +866,7 @@ def list_case_reviews(
     "/cases/{case_id}/indicators",
     response_model=schemas.IndicatorResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=CASE_EDIT_ACCESS,
 )
 def create_indicator(
     case_id: int,
@@ -854,6 +902,7 @@ def create_indicator(
 @app.get(
     "/cases/{case_id}/indicators",
     response_model=list[schemas.IndicatorResponse],
+    dependencies=CASE_READ_ACCESS,
 )
 def list_indicators(
     case_id: int,
@@ -876,6 +925,7 @@ def list_indicators(
 @app.delete(
     "/cases/{case_id}/indicators/{indicator_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=ADMIN_ONLY_ACCESS,
 )
 def delete_indicator(
     case_id: int,
@@ -915,6 +965,7 @@ def delete_indicator(
     "/cases/{case_id}/assessments",
     response_model=schemas.RiskAssessmentResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=CASE_REVIEW_ACCESS,
 )
 def create_assessment(
     case_id: int,
@@ -954,6 +1005,7 @@ def create_assessment(
 @app.get(
     "/cases/{case_id}/assessments",
     response_model=list[schemas.RiskAssessmentResponse],
+    dependencies=CASE_READ_ACCESS,
 )
 def list_assessments(
     case_id: int,
@@ -976,6 +1028,7 @@ def list_assessments(
 @app.delete(
     "/cases/{case_id}/assessments/{assessment_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=ADMIN_ONLY_ACCESS,
 )
 def delete_assessment(
     case_id: int,
@@ -1038,6 +1091,7 @@ def delete_assessment(
     "/cases/{case_id}/mitigations",
     response_model=schemas.MitigationActionResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=CASE_EDIT_ACCESS,
 )
 def create_mitigation(
     case_id: int,
@@ -1081,6 +1135,7 @@ def create_mitigation(
 @app.get(
     "/cases/{case_id}/mitigations",
     response_model=list[schemas.MitigationActionResponse],
+    dependencies=CASE_READ_ACCESS,
 )
 def list_mitigations(
     case_id: int,
@@ -1100,6 +1155,7 @@ def list_mitigations(
 @app.patch(
     "/cases/{case_id}/mitigations/{mitigation_id}",
     response_model=schemas.MitigationActionResponse,
+    dependencies=CASE_EDIT_ACCESS,
 )
 def update_mitigation(
     case_id: int,
@@ -1187,6 +1243,7 @@ def update_mitigation(
 @app.delete(
     "/cases/{case_id}/mitigations/{mitigation_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=ADMIN_ONLY_ACCESS,
 )
 def delete_mitigation(
     case_id: int,
