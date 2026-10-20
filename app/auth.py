@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Callable
 
 import jwt
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Request, status
 from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
@@ -11,6 +12,8 @@ from sqlalchemy.orm import Session
 from app import models
 from app.database import get_db
 
+
+load_dotenv()
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
