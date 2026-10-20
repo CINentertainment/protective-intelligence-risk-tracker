@@ -211,6 +211,64 @@ activityList: document.getElementById(
     toast: document.getElementById("toast"),
 };
 
+function hasRole(...allowedRoles) {
+    return Boolean(
+        state.currentUser &&
+        allowedRoles.includes(state.currentUser.role)
+    );
+}
+
+
+function canEditCases() {
+    return hasRole(
+        "Administrator",
+        "Analyst"
+    );
+}
+
+
+function canCreateReviewsAndAssessments() {
+    return hasRole(
+        "Administrator",
+        "Analyst",
+        "Reviewer"
+    );
+}
+
+
+function canDeleteRecords() {
+    return hasRole("Administrator");
+}
+
+function applyRolePermissions() {
+    const caseFormPanel =
+        elements.caseForm.closest(".panel");
+
+    caseFormPanel.classList.toggle(
+        "hidden",
+        !canEditCases()
+    );
+
+    elements.indicatorForm.classList.toggle(
+        "hidden",
+        !canEditCases()
+    );
+
+    elements.mitigationForm.classList.toggle(
+        "hidden",
+        !canEditCases()
+    );
+
+    elements.assessmentForm.classList.toggle(
+        "hidden",
+        !canCreateReviewsAndAssessments()
+    );
+
+    elements.reviewForm.classList.toggle(
+        "hidden",
+        !canCreateReviewsAndAssessments()
+    );
+}
 
 function createSortControl() {
     const filterRow = elements.statusFilter?.closest(
@@ -673,6 +731,8 @@ async function showApplication(user) {
     elements.currentUserRole.textContent =
         user.role;
 
+    applyRolePermissions();
+
     elements.authenticationScreen.classList.add(
         "hidden"
     );
@@ -1055,27 +1115,34 @@ function renderCases() {
                     : "";
 
             const operationalActions =
-                caseItem.is_archived
-                    ? `
-                        <button
-                            class="small-button restore-button"
-                            type="button"
-                            data-action="restore-case"
-                            data-case-id="${caseItem.id}"
-                        >
-                            Restore
-                        </button>
-                    `
-                    : `
-                        <button
-                            class="small-button"
-                            type="button"
-                            data-action="analyze"
-                            data-case-id="${caseItem.id}"
-                        >
-                            Analyze
-                        </button>
+    caseItem.is_archived
+        ? (
+            canEditCases()
+                ? `
+                    <button
+                        class="small-button restore-button"
+                        type="button"
+                        data-action="restore-case"
+                        data-case-id="${caseItem.id}"
+                    >
+                        Restore
+                    </button>
+                `
+                : ""
+        )
+        : `
+            <button
+                class="small-button"
+                type="button"
+                data-action="analyze"
+                data-case-id="${caseItem.id}"
+            >
+                Analyze
+            </button>
 
+            ${
+                canEditCases()
+                    ? `
                         <button
                             class="small-button"
                             type="button"
@@ -1093,7 +1160,17 @@ function renderCases() {
                         >
                             Archive
                         </button>
-                    `;
+                    `
+                    : ""
+            }
+        `;
+
+const deleteAction =
+    canDeleteRecords()
+        ? `
+            ${deleteAction}
+        `
+        : "";
 
             return `
                 <article
@@ -1384,14 +1461,20 @@ function renderIndicators(indicators) {
                             </span>
                         </div>
 
-                        <button
-                            class="danger-button"
-                            type="button"
-                            data-action="delete-indicator"
-                            data-indicator-id="${indicator.id}"
-                        >
-                            Delete
-                        </button>
+                        ${
+    canDeleteRecords()
+        ? `
+            <button
+                class="danger-button"
+                type="button"
+                data-action="delete-indicator"
+                data-indicator-id="${indicator.id}"
+            >
+                Delete
+            </button>
+        `
+        : ""
+}
                     </div>
 
                     <p>
@@ -1462,14 +1545,20 @@ function renderAssessments(assessments) {
                             </span>
                         </div>
 
-                        <button
-                            class="danger-button"
-                            type="button"
-                            data-action="delete-assessment"
-                            data-assessment-id="${assessment.id}"
-                        >
-                            Delete
-                        </button>
+                        ${
+    canDeleteRecords()
+        ? `
+            <button
+                class="danger-button"
+                type="button"
+                data-action="delete-assessment"
+                data-assessment-id="${assessment.id}"
+            >
+                Delete
+            </button>
+        `
+        : ""
+}
                     </div>
 
                     <div class="assessment-levels">
@@ -1628,31 +1717,39 @@ function renderMitigations(mitigations) {
                             </div>
 
                             <div
-                                class="mitigation-actions"
-                            >
-                                ${
-                                    canComplete
-                                        ? `
-                                            <button
-                                                class="small-button"
-                                                type="button"
-                                                data-action="complete-mitigation"
-                                                data-mitigation-id="${mitigation.id}"
-                                            >
-                                                Mark Completed
-                                            </button>
-                                        `
-                                        : ""
-                                }
+                                <div
+    class="mitigation-actions"
+>
+    ${
+        canEditCases() && canComplete
+            ? `
+                <button
+                    class="small-button"
+                    type="button"
+                    data-action="complete-mitigation"
+                    data-mitigation-id="${mitigation.id}"
+                >
+                    Mark Completed
+                </button>
+            `
+            : ""
+    }
 
-                                <button
-                                    class="danger-button"
-                                    type="button"
-                                    data-action="delete-mitigation"
-                                    data-mitigation-id="${mitigation.id}"
-                                >
-                                    Delete
-                                </button>
+    ${
+        canDeleteRecords()
+            ? `
+                <button
+                    class="danger-button"
+                    type="button"
+                    data-action="delete-mitigation"
+                    data-mitigation-id="${mitigation.id}"
+                >
+                    Delete
+                </button>
+            `
+            : ""
+    }
+</div>
                             </div>
                         </div>
 
