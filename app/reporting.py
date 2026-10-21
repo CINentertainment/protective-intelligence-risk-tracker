@@ -683,7 +683,7 @@ def build_case_report(case: models.Case) -> str:
             </div>
 
             <footer class="report-footer">
-                Protective Intelligence Risk Tracker · Version 0.6.0
+                Protective Intelligence Risk Tracker · Version 1.0.0
             </footer>
         </main>
     </body>

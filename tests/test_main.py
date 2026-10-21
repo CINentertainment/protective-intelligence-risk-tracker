@@ -184,7 +184,7 @@ def test_read_root():
     assert response.json() == {
         "application": "Protective Intelligence Risk Tracker",
         "status": "operational",
-        "version": "0.6.0",
+        "version": "1.0.0",
     }
 
 def test_dashboard():
@@ -192,14 +192,14 @@ def test_dashboard():
 
     assert response.status_code == 200
     assert "Protective Intelligence Risk Tracker" in response.text
-    assert "Version 0.6.0" in response.text
+    assert "Version 1.0.0" in response.text
 
 
 def test_openapi_version():
     response = client.get("/openapi.json")
 
     assert response.status_code == 200
-    assert response.json()["info"]["version"] == "0.6.0"
+    assert response.json()["info"]["version"] == "1.0.0"
 
 def test_health_check():
     response = client.get("/health")

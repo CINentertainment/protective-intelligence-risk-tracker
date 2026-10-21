@@ -1114,63 +1114,55 @@ function renderCases() {
                     `
                     : "";
 
-            const operationalActions =
-    caseItem.is_archived
-        ? (
-            canEditCases()
-                ? `
-                    <button
-                        class="small-button restore-button"
-                        type="button"
-                        data-action="restore-case"
-                        data-case-id="${caseItem.id}"
-                    >
-                        Restore
-                    </button>
-                `
-                : ""
-        )
-        : `
-            <button
-                class="small-button"
-                type="button"
-                data-action="analyze"
-                data-case-id="${caseItem.id}"
-            >
-                Analyze
-            </button>
-
-            ${
+            const editActions =
                 canEditCases()
+                    ? (
+                        caseItem.is_archived
+                            ? `
+                                <button
+                                    class="small-button restore-button"
+                                    type="button"
+                                    data-action="restore-case"
+                                    data-case-id="${caseItem.id}"
+                                >
+                                    Restore
+                                </button>
+                            `
+                            : `
+                                <button
+                                    class="small-button"
+                                    type="button"
+                                    data-action="edit"
+                                    data-case-id="${caseItem.id}"
+                                >
+                                    Edit
+                                </button>
+
+                                <button
+                                    class="small-button archive-button"
+                                    type="button"
+                                    data-action="archive-case"
+                                    data-case-id="${caseItem.id}"
+                                >
+                                    Archive
+                                </button>
+                            `
+                    )
+                    : "";
+
+            const deleteAction =
+                canDeleteRecords()
                     ? `
                         <button
-                            class="small-button"
+                            class="danger-button"
                             type="button"
-                            data-action="edit"
+                            data-action="delete-case"
                             data-case-id="${caseItem.id}"
                         >
-                            Edit
-                        </button>
-
-                        <button
-                            class="small-button archive-button"
-                            type="button"
-                            data-action="archive-case"
-                            data-case-id="${caseItem.id}"
-                        >
-                            Archive
+                            Delete
                         </button>
                     `
-                    : ""
-            }
-        `;
-
-const deleteAction =
-    canDeleteRecords()
-        ? `
-            ${deleteAction}
-        `
-        : "";
+                    : "";
 
             return `
                 <article
@@ -1253,28 +1245,37 @@ const deleteAction =
                         </span>
 
                         <span>
-    Record ID: ${caseItem.id}
-</span>
+                            Record ID: ${caseItem.id}
+                        </span>
 
-<span>
-    Analyst:
-    ${escapeHtml(
-        caseItem.assigned_analyst ||
-        "Unassigned"
-    )}
-</span>
+                        <span>
+                            Analyst:
+                            ${escapeHtml(
+                                caseItem.assigned_analyst ||
+                                "Unassigned"
+                            )}
+                        </span>
 
-<span>
-    Team:
-    ${escapeHtml(
-        caseItem.responsible_team ||
-        "Unassigned"
-    )}
-</span>
+                        <span>
+                            Team:
+                            ${escapeHtml(
+                                caseItem.responsible_team ||
+                                "Unassigned"
+                            )}
+                        </span>
                     </div>
 
                     <div class="case-actions">
-                        ${operationalActions}
+                        <button
+                            class="small-button"
+                            type="button"
+                            data-action="analyze"
+                            data-case-id="${caseItem.id}"
+                        >
+                            Analyze
+                        </button>
+
+                        ${editActions}
 
                         <a
                             class="small-button"
@@ -1285,21 +1286,13 @@ const deleteAction =
                             View Report
                         </a>
 
-                        <button
-                            class="danger-button"
-                            type="button"
-                            data-action="delete-case"
-                            data-case-id="${caseItem.id}"
-                        >
-                            Delete
-                        </button>
+                        ${deleteAction}
                     </div>
                 </article>
             `;
         })
         .join("");
 }
-
 
 function renderSelectedCase() {
     const caseItem = state.selectedCase;
